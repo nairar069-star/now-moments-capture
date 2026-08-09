@@ -11,11 +11,11 @@ type Store = {
   doubleNow: boolean;
   postNow: (input: {
     photo: string;
-    selfie?: string;
-    caption?: string;
-    place?: string;
+    selfie?: string | undefined;
+    caption?: string | undefined;
+    place?: string | undefined;
     visibility: Visibility;
-    secretTo?: string;
+    secretTo?: string | undefined;
   }) => void;
   react: (postId: string, emoji: string, replyTo?: string) => void;
   secrets: { id: string; from: string; photo: string; opened: boolean }[];
@@ -36,7 +36,7 @@ export function NowProvider({ children }: { children: ReactNode }) {
   const [postedToday, setPostedToday] = useState(false);
   const [guessed, setGuessed] = useState<Record<string, string[]>>({});
   const [secrets, setSecrets] = useState([
-    { id: "s1", from: "Naira", photo: photos[6], opened: false },
+    { id: "s1", from: "Naira", photo: photos[6]!, opened: false },
   ]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 

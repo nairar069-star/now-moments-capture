@@ -15,8 +15,8 @@ export type Reaction = {
   id: string;
   user: string;
   emoji: string;
-  note?: string;
-  replyTo?: string;
+  note?: string | undefined;
+  replyTo?: string | undefined;
 };
 
 export type NowPost = {
@@ -24,14 +24,14 @@ export type NowPost = {
   user: string;
   handle: string;
   photo: string;
-  selfie?: string;
+  selfie?: string | undefined;
   ago: string;
-  caption?: string;
-  place?: string;
+  caption?: string | undefined;
+  place?: string | undefined;
   visibility: Visibility;
-  someoneWithYou?: boolean;
-  together?: string;
-  guessPlace?: { options: string[]; answer: string };
+  someoneWithYou?: boolean | undefined;
+  together?: string | undefined;
+  guessPlace?: { options: string[]; answer: string } | undefined;
   reactions: Reaction[];
 };
 
