@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/now/AppShell";
-import { useNow } from "@/lib/now-store";
-import { photos, type Visibility } from "@/lib/nowData";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/settings")({
@@ -72,20 +70,3 @@ function Settings() {
     </AppShell>
   );
 }
-
-export function useComposer() {
-  const { postNow } = useNow();
-  const navigate = useNavigate();
-  return (input: {
-    photo: string;
-    selfie?: string | undefined;
-    caption?: string | undefined;
-    place?: string | undefined;
-    visibility: Visibility;
-  }) => {
-    postNow(input);
-    navigate({ to: "/" });
-  };
-}
-
-export const framePool = photos;
