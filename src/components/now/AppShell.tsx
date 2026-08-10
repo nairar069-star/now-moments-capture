@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bell, Globe, Sparkles, CalendarDays, Archive, Camera } from "lucide-react";
+import { Bell, Globe, Sparkles, CalendarDays, Archive, Camera, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNow } from "@/lib/now-store";
 import { DropBanner } from "./DropBanner";
@@ -24,14 +24,19 @@ export function AppShell({
   action?: ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { drop } = useNow();
+  const { drop, pro, notifications } = useNow();
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-background sm:max-w-lg">
       <header className="sticky top-0 z-20 bg-background/90 px-5 pt-5 pb-3 backdrop-blur hair-b">
         <div className="flex items-center justify-between">
-          <Link to="/" className="wordmark text-2xl leading-none">
-            NOW
+          <Link to="/" className="flex items-baseline gap-2">
+            <span className="wordmark text-2xl leading-none">NOW</span>
+            {pro ? (
+              <span className="rounded-full border border-accent/50 px-1.5 py-0.5 text-[9px] tracking-[0.14em] text-accent uppercase">
+                Pro
+              </span>
+            ) : null}
           </Link>
           <div className="flex items-center gap-1">
             {action}
@@ -41,19 +46,21 @@ export function AppShell({
               className="relative rounded-full p-2 text-foreground/70 transition-colors hover:bg-muted"
             >
               <Bell className="size-[18px]" />
-              <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-accent" />
+              {notifications.length > 0 ? (
+                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-accent" />
+              ) : null}
             </Link>
             <Link
               to="/profile"
               aria-label="Profile"
               className="rounded-full p-2 text-foreground/70 transition-colors hover:bg-muted"
             >
-              <span className="block size-[18px] rounded-full border border-foreground/40" />
+              <User className="size-[18px]" />
             </Link>
           </div>
         </div>
         <div className="mt-4">
-          <h1 className="text-[28px] leading-tight font-semibold">{title}</h1>
+          <h1 className="text-[28px] leading-tight font-semibold tracking-tight">{title}</h1>
           {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
       </header>
@@ -64,7 +71,7 @@ export function AppShell({
 
       <Link
         to="/post"
-        className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-medium text-background transition-transform active:scale-95"
+        className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-medium text-background shadow-[0_14px_30px_-12px_rgba(0,0,0,0.7)] transition-transform active:scale-95"
       >
         <Camera className="size-4" />
         Post a NOW
