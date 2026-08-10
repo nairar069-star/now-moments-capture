@@ -43,7 +43,10 @@ type Store = {
   doubleNow: boolean;
   postNow: (input: PostInput) => void;
   deletePost: (id: string) => void;
-  react: (postId: string, input: { emoji?: string; note?: string; replyTo?: string }) => void;
+  react: (
+    postId: string,
+    input: { emoji?: string | undefined; note?: string | undefined; replyTo?: string | undefined },
+  ) => void;
   secrets: { id: string; from: string; photo: string; opened: boolean }[];
   openSecret: (id: string) => void;
   sendSecret: (to: string) => void;
