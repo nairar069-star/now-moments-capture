@@ -68,6 +68,13 @@ function Profile() {
         <Link to="/ai" className="block rounded-lg border px-4 py-3 text-sm">
           NOW AI — memory assistant
         </Link>
+        <Link
+          to="/pro"
+          className="flex items-center justify-between rounded-lg bg-foreground px-4 py-3 text-sm text-background"
+        >
+          NOW Pro — create and join events
+          <span className="text-xs opacity-70">$10/mo</span>
+        </Link>
       </div>
     </AppShell>
   );

@@ -1,60 +1,129 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { MapPin, Plus } from "lucide-react";
 import { AppShell } from "@/components/now/AppShell";
 import { NowCard } from "@/components/now/NowCard";
-import { cities, worldNows } from "@/lib/nowData";
+import { worldNows } from "@/lib/nowData";
+import { useNow } from "@/lib/now-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/world")({
   head: () => ({
     meta: [
-      { title: "WORLD — What's happening right now | NOW" },
+      { title: "World — What's happening right now | NOW" },
       {
         name: "description",
-        content: "Explore public NOWs from random people in Tokyo, Jakarta, Paris and beyond.",
+        content: "Explore public NOWs from people in Tokyo, Jakarta, Paris — or add your own location.",
       },
-      { property: "og:title", content: "WORLD — What's happening right now" },
-      {
-        property: "og:description",
-        content: "Random, authentic moments from cities around the world.",
-      },
+      { property: "og:title", content: "World — What's happening right now" },
+      { property: "og:description", content: "Real moments from cities around the world." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: World,
 });
 
 function World() {
-  const [selected, setSelected] = useState(cities[0]!.name);
+  const { cities, worldPlace, setWorldPlace, addCity } = useNow();
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [locating, setLocating] = useState(false);
+
+  function useMyLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        addCity(`Near ${pos.coords.latitude.toFixed(1)}, ${pos.coords.longitude.toFixed(1)}`);
+        setLocating(false);
+        setAdding(false);
+      },
+      () => setLocating(false),
+      { timeout: 8000 },
+    );
+  }
 
   return (
-    <AppShell title="World" subtitle="What's happening in another city right now?">
+    <AppShell title="World" subtitle="What's happening in another place right now?">
+      <div className="mb-6 rounded-2xl border p-3">
+        {!adding ? (
+          <button
+            onClick={() => setAdding(true)}
+            className="flex w-full items-center justify-between text-sm"
+          >
+            <span className="flex items-center gap-2">
+              <Plus className="size-4" /> Add a location
+            </span>
+            <span className="meta-label">Anywhere</span>
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && name.trim()) {
+                  addCity(name);
+                  setName("");
+                  setAdding(false);
+                }
+              }}
+              placeholder="City or place name"
+              className="w-full border-b bg-transparent pb-2 text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={useMyLocation}
+                className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs"
+              >
+                <MapPin className="size-3.5" />
+                {locating ? "Locating…" : "Use my location"}
+              </button>
+              <button onClick={() => setAdding(false)} className="rounded-full border px-3 py-1.5 text-xs">
+                Cancel
+              </button>
+              <button
+                disabled={!name.trim()}
+                onClick={() => {
+                  addCity(name);
+                  setName("");
+                  setAdding(false);
+                }}
+                className="rounded-full bg-foreground px-4 py-1.5 text-xs text-background disabled:opacity-40"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <ul className="mb-8 divide-y divide-[var(--hairline)]">
         {cities.map((c) => (
           <li key={c.name}>
             <button
-              onClick={() => setSelected(c.name)}
+              onClick={() => setWorldPlace(c.name)}
               className="flex w-full items-center justify-between py-3 text-left"
             >
-              <span className="flex items-center gap-3">
-                <span className="text-lg">{c.flag}</span>
-                <span>
-                  <span className={cn("block text-[15px]", selected === c.name && "text-accent")}>
-                    {c.name}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {c.count.toLocaleString()} NOWs · local {c.time}
-                  </span>
+              <span>
+                <span className={cn("block text-[15px]", worldPlace === c.name && "text-accent")}>
+                  {c.name}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {c.count.toLocaleString()} NOWs · local {c.time}
                 </span>
               </span>
-              <span className="meta-label">{selected === c.name ? "Viewing" : "Open"}</span>
+              <span className="meta-label">{worldPlace === c.name ? "Viewing" : "Open"}</span>
             </button>
           </li>
         ))}
       </ul>
 
-      <p className="meta-label mb-4">Random public NOWs — {selected}</p>
+      <p className="meta-label mb-4">Public NOWs — {worldPlace}</p>
       {worldNows.map((post) => (
-        <NowCard key={post.id} post={{ ...post, place: selected }} compact />
+        <NowCard key={post.id} post={{ ...post, place: worldPlace }} compact />
       ))}
     </AppShell>
   );

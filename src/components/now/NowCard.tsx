@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Users, Lock, Globe2 } from "lucide-react";
+import { MapPin, Users, Lock, Globe2, Trash2 } from "lucide-react";
 import type { NowPost } from "@/lib/nowData";
 import { useNow } from "@/lib/now-store";
 import { ReactionChain } from "./ReactionChain";
@@ -12,11 +12,12 @@ const visibilityIcon = {
 };
 
 export function NowCard({ post, compact = false }: { post: NowPost; compact?: boolean }) {
-  const { guessed, guess } = useNow();
+  const { guessed, guess, deletePost } = useNow();
   const [showGuess, setShowGuess] = useState(false);
   const VIcon = visibilityIcon[post.visibility];
   const myGuesses = guessed[post.id] ?? [];
   const correct = post.guessPlace ? myGuesses.includes(post.guessPlace.answer) : false;
+  const mine = post.user === "You";
 
   return (
     <article className="mb-10">
@@ -24,26 +25,44 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
         <div className="flex items-baseline gap-2">
           <h2 className="text-[15px] font-medium">{post.user}</h2>
           {post.together ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              🫂 with {post.together}
+            <span className="rounded-full border border-accent/40 px-2 py-0.5 text-[11px] text-accent">
+              with {post.together}
             </span>
           ) : null}
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
           <VIcon className="size-3" />
           <span className="text-[11px]">{post.ago}</span>
+          {mine ? (
+            <button
+              onClick={() => deletePost(post.id)}
+              aria-label="Delete this NOW"
+              className="rounded-full p-1 transition-colors hover:bg-muted hover:text-destructive"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          ) : null}
         </div>
       </header>
 
-      <div className="relative overflow-hidden rounded-xl bg-muted">
-        <img
-          src={post.photo}
-          alt={`${post.user}'s NOW`}
-          loading="lazy"
-          width={768}
-          height={1024}
-          className={cn("w-full object-cover", compact ? "aspect-square" : "aspect-[4/5]")}
-        />
+      <div className="relative overflow-hidden rounded-2xl bg-muted shadow-[0_18px_40px_-30px_rgba(0,0,0,0.6)]">
+        {post.video ? (
+          <video
+            src={post.video}
+            controls
+            playsInline
+            className={cn("w-full bg-foreground object-cover", compact ? "aspect-square" : "aspect-[4/5]")}
+          />
+        ) : (
+          <img
+            src={post.photo}
+            alt={`${post.user}'s NOW`}
+            loading="lazy"
+            width={768}
+            height={1024}
+            className={cn("w-full object-cover", compact ? "aspect-square" : "aspect-[4/5]")}
+          />
+        )}
         {post.selfie ? (
           <img
             src={post.selfie}
@@ -51,13 +70,8 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
             loading="lazy"
             width={768}
             height={1024}
-            className="absolute top-3 left-3 h-28 w-20 rounded-md border border-background/60 object-cover"
+            className="absolute top-3 left-3 h-28 w-20 rounded-lg border-2 border-background/80 object-cover shadow-lg"
           />
-        ) : null}
-        {post.someoneWithYou ? (
-          <span className="absolute bottom-3 left-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px]">
-            👤 Someone's with you.
-          </span>
         ) : null}
       </div>
 
@@ -103,7 +117,11 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
                   </button>
                 );
               })}
-              {correct ? <span className="text-xs text-accent">+1</span> : null}
+              {correct ? (
+                <span className="text-xs text-accent">Correct</span>
+              ) : myGuesses.length >= 3 ? (
+                <span className="text-xs text-muted-foreground">Out of guesses</span>
+              ) : null}
             </div>
           )}
         </div>

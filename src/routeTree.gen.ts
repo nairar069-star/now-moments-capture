@@ -15,6 +15,7 @@ import { Route as EventsRouteImport } from './routes/events'
 import { Route as MemoriesRouteImport } from './routes/memories'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PostRouteImport } from './routes/post'
+import { Route as ProRouteImport } from './routes/pro'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SecretRouteImport } from './routes/secret'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -50,6 +51,11 @@ const PostRoute = PostRouteImport.update({
   path: '/post',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProRoute = ProRouteImport.update({
+  id: '/pro',
+  path: '/pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
   '/post': typeof PostRoute
+  '/pro': typeof ProRoute
   '/profile': typeof ProfileRoute
   '/secret': typeof SecretRoute
   '/settings': typeof SettingsRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
   '/post': typeof PostRoute
+  '/pro': typeof ProRoute
   '/profile': typeof ProfileRoute
   '/secret': typeof SecretRoute
   '/settings': typeof SettingsRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
   '/post': typeof PostRoute
+  '/pro': typeof ProRoute
   '/profile': typeof ProfileRoute
   '/secret': typeof SecretRoute
   '/settings': typeof SettingsRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/memories'
     | '/notifications'
     | '/post'
+    | '/pro'
     | '/profile'
     | '/secret'
     | '/settings'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/memories'
     | '/notifications'
     | '/post'
+    | '/pro'
     | '/profile'
     | '/secret'
     | '/settings'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/memories'
     | '/notifications'
     | '/post'
+    | '/pro'
     | '/profile'
     | '/secret'
     | '/settings'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   MemoriesRoute: typeof MemoriesRoute
   NotificationsRoute: typeof NotificationsRoute
   PostRoute: typeof PostRoute
+  ProRoute: typeof ProRoute
   ProfileRoute: typeof ProfileRoute
   SecretRoute: typeof SecretRoute
   SettingsRoute: typeof SettingsRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pro': {
+      id: '/pro'
+      path: '/pro'
+      fullPath: '/pro'
+      preLoaderRoute: typeof ProRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoriesRoute: MemoriesRoute,
   NotificationsRoute: NotificationsRoute,
   PostRoute: PostRoute,
+  ProRoute: ProRoute,
   ProfileRoute: ProfileRoute,
   SecretRoute: SecretRoute,
   SettingsRoute: SettingsRoute,
