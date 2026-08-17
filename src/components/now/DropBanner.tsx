@@ -5,7 +5,7 @@ export function DropBanner() {
   const { drop, doubleNow } = useNow();
 
   return (
-    <div className="sticky top-[112px] z-10 mx-5 mt-3 rounded-lg bg-accent px-4 py-3 text-accent-foreground">
+    <div className="mt-3 rounded-lg bg-accent px-4 py-3 text-accent-foreground">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] tracking-[0.18em] uppercase opacity-90">
