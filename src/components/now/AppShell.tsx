@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Bell, Globe, Sparkles, CalendarDays, Archive, Camera, User } from "lucide-react";
+import { formatCountdown } from "@/lib/now-store";
 import { cn } from "@/lib/utils";
 import { useNow } from "@/lib/now-store";
 import { DropBanner } from "./DropBanner";
@@ -24,7 +25,7 @@ export function AppShell({
   action?: ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { drop, pro, notifications } = useNow();
+  const { drop, pro, notifications, nextDropIn, activeEvent } = useNow();
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-background sm:max-w-lg">
@@ -63,9 +64,26 @@ export function AppShell({
           <h1 className="text-[28px] leading-tight font-semibold tracking-tight">{title}</h1>
           {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
-      </header>
 
-      {drop.active ? <DropBanner /> : null}
+        {drop.active ? (
+          <DropBanner />
+        ) : (
+          <p className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="tracking-[0.14em] uppercase">Next NOW drop</span>
+            <span className="wordmark tabular text-sm text-accent">{formatCountdown(nextDropIn)}</span>
+          </p>
+        )}
+
+        {activeEvent ? (
+          <Link
+            to="/post"
+            className="mt-2 flex items-center justify-between rounded-lg border border-accent/40 px-3 py-2 text-xs"
+          >
+            <span className="truncate">Posting to {activeEvent.title}</span>
+            <span className="wordmark tabular ml-3 text-accent">{formatCountdown(activeEvent.secondsLeft)}</span>
+          </Link>
+        ) : null}
+      </header>
 
       <main className="flex-1 px-5 pt-4 pb-32">{children}</main>
 
