@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Camera, RefreshCw, Square, Video, X } from "lucide-react";
+import { Camera, Eye, RefreshCw, Square, Users, Video, X } from "lucide-react";
 import { formatCountdown, useNow } from "@/lib/now-store";
 import { photos, type Visibility } from "@/lib/nowData";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/post")({
   head: () => ({
     meta: [
       { title: "Post a NOW | NOW" },
-      { name: "description", content: "Open the camera and post a NOW — photo or video. Spontaneous, not polished." },
+      { name: "description", content: "Open the camera and post a NOW — photo, video or dual camera." },
       { property: "og:title", content: "Post a NOW" },
       { property: "og:description", content: "Take it now, share it now." },
       { property: "og:type", content: "website" },
@@ -25,31 +25,40 @@ const visibilities: { key: Visibility; label: string }[] = [
   { key: "public", label: "Public" },
 ];
 
+type Mode = "photo" | "video" | "dual";
+
 function Compose() {
   const navigate = useNavigate();
-  const { postNow, drop, doubleNow, cities, worldPlace } = useNow();
+  const { postNow, drop, doubleNow, cities, worldPlace, activeEvent, friends } = useNow();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const frontRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const frontStreamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
-  const [mode, setMode] = useState<"photo" | "video">("photo");
+  const [mode, setMode] = useState<Mode>("photo");
   const [recording, setRecording] = useState(false);
   const [live, setLive] = useState(false);
+  const [dualLive, setDualLive] = useState(false);
   const [shots, setShots] = useState<string[]>([]);
   const [clip, setClip] = useState<string | undefined>(undefined);
   const [caption, setCaption] = useState("");
   const [place, setPlace] = useState<string>("");
   const [visibility, setVisibility] = useState<Visibility>("friends");
-  const needed = doubleNow ? 2 : 1;
+  const [once, setOnce] = useState(false);
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const myFriends = friends.filter((f) => f.status === "friend");
+  const needed = mode === "dual" ? 2 : doubleNow && mode === "photo" ? 2 : 1;
   const done = clip ? true : shots.length >= needed;
 
+  // Main camera stream.
   useEffect(() => {
     let stream: MediaStream | null = null;
     let cancelled = false;
     (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facing },
+          video: { facingMode: mode === "dual" ? "environment" : facing },
           audio: mode === "video",
         });
         if (cancelled) {
@@ -72,22 +81,57 @@ function Compose() {
     };
   }, [facing, mode]);
 
-  function capture() {
-    let shot: string | undefined;
-    const video = videoRef.current;
-    if (live && video && video.videoWidth) {
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      // No mirroring: draw the frame exactly as the sensor sees it.
-      canvas.getContext("2d")?.drawImage(video, 0, 0);
-      shot = canvas.toDataURL("image/jpeg", 0.85);
-    } else {
-      shot = photos[Math.floor(Math.random() * photos.length)]!;
+  // Dual camera: a second, simultaneous front stream.
+  useEffect(() => {
+    if (mode !== "dual") {
+      setDualLive(false);
+      return;
     }
-    const next = [...shots, shot!].slice(0, needed);
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        frontStreamRef.current = stream;
+        if (frontRef.current) {
+          frontRef.current.srcObject = stream;
+          await frontRef.current.play();
+          setDualLive(true);
+        }
+      } catch {
+        setDualLive(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [mode]);
+
+  function grab(el: HTMLVideoElement | null) {
+    if (el && el.videoWidth) {
+      const canvas = document.createElement("canvas");
+      canvas.width = el.videoWidth;
+      canvas.height = el.videoHeight;
+      // No mirroring: the frame is drawn exactly as the sensor sees it.
+      canvas.getContext("2d")?.drawImage(el, 0, 0);
+      return canvas.toDataURL("image/jpeg", 0.85);
+    }
+    return photos[Math.floor(Math.random() * photos.length)]!;
+  }
+
+  function capture() {
+    if (mode === "dual") {
+      // Both cameras at once.
+      setShots([grab(videoRef.current), grab(dualLive ? frontRef.current : null)]);
+      return;
+    }
+    const next = [...shots, grab(live ? videoRef.current : null)].slice(0, needed);
     setShots(next);
-    // Double NOW: first the back camera, then automatically flip to the front.
     if (doubleNow && next.length === 1) setFacing("user");
   }
 
@@ -123,8 +167,11 @@ function Compose() {
       caption: caption || undefined,
       place: place || undefined,
       visibility,
+      once,
+      collaborators,
+      eventId: activeEvent?.id,
     });
-    navigate({ to: "/" });
+    navigate({ to: activeEvent ? "/events" : "/" });
   }
 
   return (
@@ -133,7 +180,13 @@ function Compose() {
         <Link to="/" aria-label="Close" className="rounded-full p-2 hover:bg-muted">
           <X className="size-5" />
         </Link>
-        <p className="meta-label">{doubleNow ? "Double NOW — back, then front" : "Post a NOW"}</p>
+        <p className="meta-label">
+          {mode === "dual"
+            ? "Dual camera — front + back"
+            : doubleNow
+              ? "Double NOW — back, then front"
+              : "Post a NOW"}
+        </p>
         {drop.active ? (
           <span className="wordmark tabular text-sm text-accent">{formatCountdown(drop.secondsLeft)}</span>
         ) : (
@@ -141,12 +194,23 @@ function Compose() {
         )}
       </div>
 
+      {activeEvent ? (
+        <div className="mt-3 flex items-center justify-between rounded-lg bg-accent px-3 py-2 text-xs text-accent-foreground">
+          <span className="truncate">Sending to {activeEvent.title}</span>
+          <span className="wordmark tabular ml-3">{formatCountdown(activeEvent.secondsLeft)}</span>
+        </div>
+      ) : null}
+
       {!done ? (
         <div className="mt-4 flex justify-center gap-1 rounded-full bg-muted p-1 text-xs">
-          {(["photo", "video"] as const).map((m) => (
+          {(["photo", "video", "dual"] as const).map((m) => (
             <button
               key={m}
-              onClick={() => setMode(m)}
+              onClick={() => {
+                setMode(m);
+                setShots([]);
+                setClip(undefined);
+              }}
               className={cn(
                 "flex-1 rounded-full py-2 capitalize transition-colors",
                 mode === m ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
@@ -163,10 +227,19 @@ function Compose() {
           ref={videoRef}
           playsInline
           muted
-          // Never mirrored, even on the front camera.
+          // Never mirrored, on either camera.
           style={{ transform: "none" }}
           className={cn("aspect-[4/5] w-full object-cover", done && "opacity-0")}
         />
+        {mode === "dual" && !done ? (
+          <video
+            ref={frontRef}
+            playsInline
+            muted
+            style={{ transform: "none" }}
+            className="absolute top-3 left-3 h-32 w-24 rounded-lg border-2 border-background/80 bg-foreground object-cover"
+          />
+        ) : null}
         {clip ? (
           <video
             src={clip}
@@ -194,6 +267,11 @@ function Compose() {
             Camera unavailable — tap the shutter to use a sample frame.
           </p>
         ) : null}
+        {mode === "dual" && live && !dualLive && !done ? (
+          <p className="absolute inset-x-0 bottom-4 text-center text-xs text-background/80">
+            Only one camera on this device — the second frame is a sample.
+          </p>
+        ) : null}
       </div>
 
       {!done ? (
@@ -201,13 +279,14 @@ function Compose() {
           <button
             onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
             aria-label="Flip camera"
-            className="rounded-full p-3 text-muted-foreground hover:bg-muted"
+            disabled={mode === "dual"}
+            className="rounded-full p-3 text-muted-foreground hover:bg-muted disabled:opacity-30"
           >
             <RefreshCw className="size-5" />
           </button>
           <button
-            onClick={mode === "photo" ? capture : toggleRecording}
-            aria-label={mode === "photo" ? "Take photo" : recording ? "Stop recording" : "Record video"}
+            onClick={mode === "video" ? toggleRecording : capture}
+            aria-label={mode === "video" ? (recording ? "Stop recording" : "Record video") : "Take photo"}
             className="flex size-18 items-center justify-center rounded-full border-2 border-foreground p-1 transition-transform active:scale-95"
           >
             <span
@@ -216,12 +295,14 @@ function Compose() {
                 recording ? "bg-destructive" : "bg-foreground",
               )}
             >
-              {mode === "photo" ? (
-                <Camera className="size-5" />
-              ) : recording ? (
-                <Square className="size-4" />
+              {mode === "video" ? (
+                recording ? (
+                  <Square className="size-4" />
+                ) : (
+                  <Video className="size-5" />
+                )
               ) : (
-                <Video className="size-5" />
+                <Camera className="size-5" />
               )}
             </span>
           </button>
@@ -265,6 +346,31 @@ function Compose() {
           </div>
 
           <div>
+            <p className="meta-label mb-2 flex items-center gap-1.5">
+              <Users className="size-3.5" /> Collaborators
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {myFriends.map((f) => {
+                const on = collaborators.includes(f.name);
+                return (
+                  <button
+                    key={f.handle}
+                    onClick={() =>
+                      setCollaborators((c) => (on ? c.filter((x) => x !== f.name) : [...c, f.name]))
+                    }
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs transition-colors",
+                      on ? "border-accent text-accent" : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {f.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
             <p className="meta-label mb-2">Who can see this</p>
             <div className="flex gap-2">
               {visibilities.map((v) => (
@@ -282,6 +388,19 @@ function Compose() {
             </div>
           </div>
 
+          <button
+            onClick={() => setOnce((o) => !o)}
+            className={cn(
+              "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm transition-colors",
+              once && "border-accent text-accent",
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <Eye className="size-4" /> View once
+            </span>
+            <span className="text-[11px] tracking-[0.14em] uppercase">{once ? "On" : "Off"}</span>
+          </button>
+
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -297,7 +416,7 @@ function Compose() {
               onClick={publish}
               className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground"
             >
-              Post a NOW
+              {activeEvent ? "Send to event" : "Post a NOW"}
             </button>
           </div>
         </div>

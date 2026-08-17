@@ -31,6 +31,9 @@ export type NowPost = {
   place?: string | undefined;
   visibility: Visibility;
   together?: string | undefined;
+  collaborators?: string[] | undefined;
+  once?: boolean | undefined;
+  eventTitle?: string | undefined;
   guessPlace?: { options: string[]; answer: string } | undefined;
   reactions: Reaction[];
 };
@@ -98,6 +101,64 @@ export const friendsNows: NowPost[] = [
     reactions: [{ id: "r9", user: "Alya", note: "no regrets" }],
   },
 ];
+
+export type Friend = {
+  name: string;
+  handle: string;
+  photo: string;
+  status: "friend" | "pending" | "requested" | "suggested";
+  lastNow: string;
+};
+
+export const friends: Friend[] = [
+  { name: "Naira", handle: "@naira", photo: now1, status: "friend", lastNow: "4 min ago" },
+  { name: "Alya", handle: "@alya", photo: now3, status: "friend", lastNow: "22 min ago" },
+  { name: "Raka", handle: "@raka", photo: now2, status: "friend", lastNow: "1 hr ago" },
+  { name: "Sarah", handle: "@sarah", photo: now7, status: "friend", lastNow: "2 hr ago" },
+  { name: "Dimas", handle: "@dimas", photo: now6, status: "pending", lastNow: "wants to be friends" },
+  { name: "Kirana", handle: "@kirana", photo: now4, status: "suggested", lastNow: "3 mutual friends" },
+  { name: "Bagas", handle: "@bagas", photo: now8, status: "suggested", lastNow: "1 mutual friend" },
+];
+
+export type NearbyPlace = { name: string; lat: number; lon: number };
+
+// A small gazetteer used to turn raw coordinates into human place options.
+export const gazetteer: NearbyPlace[] = [
+  { name: "Jakarta", lat: -6.2, lon: 106.816 },
+  { name: "Depok", lat: -6.402, lon: 106.794 },
+  { name: "Bogor", lat: -6.595, lon: 106.816 },
+  { name: "Bekasi", lat: -6.238, lon: 106.975 },
+  { name: "Tangerang", lat: -6.178, lon: 106.63 },
+  { name: "Bandung", lat: -6.917, lon: 107.619 },
+  { name: "Yogyakarta", lat: -7.797, lon: 110.37 },
+  { name: "Surabaya", lat: -7.257, lon: 112.752 },
+  { name: "Bali", lat: -8.65, lon: 115.216 },
+  { name: "Singapore", lat: 1.352, lon: 103.82 },
+  { name: "Kuala Lumpur", lat: 3.139, lon: 101.687 },
+  { name: "Tokyo", lat: 35.676, lon: 139.65 },
+  { name: "Seoul", lat: 37.567, lon: 126.978 },
+  { name: "Sydney", lat: -33.868, lon: 151.209 },
+  { name: "Dubai", lat: 25.204, lon: 55.27 },
+  { name: "London", lat: 51.507, lon: -0.128 },
+  { name: "Paris", lat: 48.857, lon: 2.352 },
+  { name: "Berlin", lat: 52.52, lon: 13.405 },
+  { name: "New York", lat: 40.713, lon: -74.006 },
+  { name: "São Paulo", lat: -23.55, lon: -46.633 },
+  { name: "Nairobi", lat: -1.286, lon: 36.817 },
+  { name: "Reykjavík", lat: 64.147, lon: -21.94 },
+];
+
+export function nearbyPlaces(lat: number, lon: number, limit = 4) {
+  return [...gazetteer]
+    .map((p) => ({
+      ...p,
+      km: Math.round(
+        Math.hypot((p.lat - lat) * 111, (p.lon - lon) * 111 * Math.cos((lat * Math.PI) / 180)),
+      ),
+    }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, limit);
+}
 
 export type City = { name: string; count: number; time: string; photo: string };
 

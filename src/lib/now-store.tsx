@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from "react";
 import {
   cities as seedCities,
+  friends as seedFriends,
+  type Friend,
   events as seedEvents,
   friendsNows,
   notifications as seedNotifications,
@@ -26,6 +28,8 @@ export type TogetherRequest = {
   status: "pending" | "confirmed" | "declined";
 };
 
+type ActiveEvent = { id: string; title: string; secondsLeft: number } | null;
+
 type PostInput = {
   photo: string;
   video?: string | undefined;
@@ -34,12 +38,16 @@ type PostInput = {
   place?: string | undefined;
   visibility: Visibility;
   secretTo?: string | undefined;
+  once?: boolean | undefined;
+  collaborators?: string[] | undefined;
+  eventId?: string | undefined;
 };
 
 type Store = {
   feed: NowPost[];
   drop: DropState;
   startDrop: () => void;
+  nextDropIn: number;
   doubleNow: boolean;
   postNow: (input: PostInput) => void;
   deletePost: (id: string) => void;
@@ -65,6 +73,8 @@ type Store = {
 
   events: NowEvent[];
   joinedEvents: string[];
+  activeEvent: ActiveEvent;
+  leaveActiveEvent: () => void;
   joinEvent: (id: string) => void;
   createEvent: (input: { title: string; time: string; blurb: string }) => void;
 
@@ -74,6 +84,11 @@ type Store = {
 
   togetherRequests: TogetherRequest[];
   answerTogether: (id: string, accept: boolean) => void;
+
+  friends: Friend[];
+  addFriend: (handle: string) => void;
+  answerFriend: (handle: string, accept: boolean) => void;
+  removeFriend: (handle: string) => void;
 
   notifications: NowNotification[];
   pushEnabled: boolean;
@@ -97,6 +112,9 @@ export function NowProvider({ children }: { children: ReactNode }) {
   const [worldPlace, setWorldPlace] = useState(seedCities[0]!.name);
   const [events, setEvents] = useState<NowEvent[]>(seedEvents);
   const [joinedEvents, setJoinedEvents] = useState<string[]>([]);
+  const [activeEvent, setActiveEvent] = useState<ActiveEvent>(null);
+  const [friends, setFriends] = useState<Friend[]>(seedFriends);
+  const [nextDropIn, setNextDropIn] = useState(() => 40 + Math.floor(Math.random() * 60));
   const [quests, setQuests] = useState<Quest[]>(seedQuests);
   const [joinedQuests, setJoinedQuests] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NowNotification[]>(seedNotifications);
@@ -149,26 +167,39 @@ export function NowProvider({ children }: { children: ReactNode }) {
     };
   }, [drop.active]);
 
-  // Unpredictable drop: fires once, somewhere between 25s and 70s after open.
+  // Daily NOW DROP scheduler: a visible countdown to the next unpredictable drop.
   useEffect(() => {
-    const delay = 25000 + Math.random() * 45000;
-    const t = setTimeout(() => {
-      setDoubleNow(Math.random() > 0.5);
-      setDrop({ active: true, secondsLeft: DROP_SECONDS, missed: false });
-      setNotifications((list) => [
-        { id: `${Date.now()}`, kind: "drop", title: "NOW DROP", body: "You have 90 seconds.", ago: "now", accent: true },
-        ...list,
-      ]);
-      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-        try {
-          new Notification("NOW DROP", { body: "You have 90 seconds." });
-        } catch {
-          /* ignore */
+    const t = setInterval(() => {
+      setNextDropIn((n) => {
+        if (n > 1) return n - 1;
+        setDoubleNow(Math.random() > 0.5);
+        setDrop({ active: true, secondsLeft: DROP_SECONDS, missed: false });
+        setNotifications((list) => [
+          { id: `${Date.now()}`, kind: "drop", title: "NOW DROP", body: "You have 90 seconds.", ago: "now", accent: true },
+          ...list,
+        ]);
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification("NOW DROP", { body: "You have 90 seconds." });
+          } catch {
+            /* ignore */
+          }
         }
-      }
-    }, delay);
-    return () => clearTimeout(t);
+        // Next drop later today, at an unpredictable moment.
+        return 300 + Math.floor(Math.random() * 600);
+      });
+    }, 1000);
+    return () => clearInterval(t);
   }, []);
+
+  // Event window countdown: posting to a joined event is only open for a short while.
+  useEffect(() => {
+    if (!activeEvent) return;
+    const t = setInterval(() => {
+      setActiveEvent((e) => (e ? (e.secondsLeft <= 1 ? null : { ...e, secondsLeft: e.secondsLeft - 1 }) : e));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [activeEvent?.id]);
 
   const postNow = useCallback<Store["postNow"]>(
     (input) => {
@@ -187,13 +218,17 @@ export function NowProvider({ children }: { children: ReactNode }) {
         caption: input.caption,
         place: input.place,
         visibility: input.visibility,
+        once: input.once,
+        collaborators: input.collaborators?.length ? input.collaborators : undefined,
+        eventTitle: input.eventId ? events.find((e) => e.id === input.eventId)?.title : undefined,
         reactions: [],
       };
       setFeed((f) => [post, ...f]);
       setPostedToday(true);
       setDrop({ active: false, secondsLeft: DROP_SECONDS, missed: false });
+      if (input.eventId) setActiveEvent(null);
     },
-    [],
+    [events],
   );
 
   const deletePost = useCallback((id: string) => {
@@ -271,11 +306,36 @@ export function NowProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       setJoinedEvents((j) => (j.includes(id) ? j : [...j, id]));
       setEvents((list) => list.map((e) => (e.id === id ? { ...e, joined: e.joined + 1 } : e)));
-      const ev = seedEvents.find((e) => e.id === id);
+      const ev = events.find((e) => e.id === id);
+      setActiveEvent({ id, title: ev?.title ?? "Event", secondsLeft: 180 });
       notify({ kind: "event", title: "You joined an event", body: ev?.title ?? "See you there." });
+    },
+    [events, notify],
+  );
+
+  const leaveActiveEvent = useCallback(() => setActiveEvent(null), []);
+
+  const addFriend = useCallback(
+    (handle: string) => {
+      setFriends((list) =>
+        list.map((f) => (f.handle === handle ? { ...f, status: "requested", lastNow: "request sent" } : f)),
+      );
+      notify({ kind: "together", title: "Friend request sent", body: handle });
     },
     [notify],
   );
+
+  const answerFriend = useCallback((handle: string, accept: boolean) => {
+    setFriends((list) =>
+      accept
+        ? list.map((f) => (f.handle === handle ? { ...f, status: "friend", lastNow: "just now" } : f))
+        : list.filter((f) => f.handle !== handle),
+    );
+  }, []);
+
+  const removeFriend = useCallback((handle: string) => {
+    setFriends((list) => list.map((f) => (f.handle === handle ? { ...f, status: "suggested", lastNow: "removed" } : f)));
+  }, []);
 
   const createEvent = useCallback<Store["createEvent"]>(
     (input) => {
@@ -324,6 +384,7 @@ export function NowProvider({ children }: { children: ReactNode }) {
       feed,
       drop,
       startDrop,
+      nextDropIn,
       doubleNow,
       postNow,
       deletePost,
@@ -343,6 +404,8 @@ export function NowProvider({ children }: { children: ReactNode }) {
       setWorldPlace,
       events,
       joinedEvents,
+      activeEvent,
+      leaveActiveEvent,
       joinEvent,
       createEvent,
       quests,
@@ -350,6 +413,10 @@ export function NowProvider({ children }: { children: ReactNode }) {
       joinQuest,
       togetherRequests,
       answerTogether,
+      friends,
+      addFriend,
+      answerFriend,
+      removeFriend,
       notifications,
       pushEnabled,
       enablePush,
@@ -359,6 +426,7 @@ export function NowProvider({ children }: { children: ReactNode }) {
       feed,
       drop,
       startDrop,
+      nextDropIn,
       doubleNow,
       postNow,
       deletePost,
@@ -377,6 +445,8 @@ export function NowProvider({ children }: { children: ReactNode }) {
       worldPlace,
       events,
       joinedEvents,
+      activeEvent,
+      leaveActiveEvent,
       joinEvent,
       createEvent,
       quests,
@@ -384,6 +454,10 @@ export function NowProvider({ children }: { children: ReactNode }) {
       joinQuest,
       togetherRequests,
       answerTogether,
+      friends,
+      addFriend,
+      answerFriend,
+      removeFriend,
       notifications,
       pushEnabled,
       enablePush,
