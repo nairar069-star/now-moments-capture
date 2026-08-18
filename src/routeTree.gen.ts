@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as EventsRouteImport } from './routes/events'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as MemoriesRouteImport } from './routes/memories'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PostRouteImport } from './routes/post'
@@ -34,6 +35,11 @@ const AiRoute = AiRouteImport.update({
 const EventsRoute = EventsRouteImport.update({
   id: '/events',
   path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MemoriesRoute = MemoriesRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/events': typeof EventsRoute
+  '/friends': typeof FriendsRoute
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
   '/post': typeof PostRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/events': typeof EventsRoute
+  '/friends': typeof FriendsRoute
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
   '/post': typeof PostRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/events': typeof EventsRoute
+  '/friends': typeof FriendsRoute
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
   '/post': typeof PostRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/events'
+    | '/friends'
     | '/memories'
     | '/notifications'
     | '/post'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/events'
+    | '/friends'
     | '/memories'
     | '/notifications'
     | '/post'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/events'
+    | '/friends'
     | '/memories'
     | '/notifications'
     | '/post'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiRoute: typeof AiRoute
   EventsRoute: typeof EventsRoute
+  FriendsRoute: typeof FriendsRoute
   MemoriesRoute: typeof MemoriesRoute
   NotificationsRoute: typeof NotificationsRoute
   PostRoute: typeof PostRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/events'
       fullPath: '/events'
       preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/memories': {
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiRoute: AiRoute,
   EventsRoute: EventsRoute,
+  FriendsRoute: FriendsRoute,
   MemoriesRoute: MemoriesRoute,
   NotificationsRoute: NotificationsRoute,
   PostRoute: PostRoute,

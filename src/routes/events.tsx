@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Plus, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/now/AppShell";
-import { useNow } from "@/lib/now-store";
+import { formatCountdown, useNow } from "@/lib/now-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/events")({
@@ -26,7 +26,8 @@ export const Route = createFileRoute("/events")({
 });
 
 function Events() {
-  const { events, joinedEvents, joinEvent, createEvent, quests, joinedQuests, joinQuest, pro } = useNow();
+  const { events, joinedEvents, joinEvent, createEvent, quests, joinedQuests, joinQuest, pro, activeEvent, leaveActiveEvent } =
+    useNow();
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
@@ -136,9 +137,28 @@ function Events() {
               {e.status === "past" ? (
                 <span className="meta-label">Ended</span>
               ) : joined ? (
-                <Link to="/post" className="flex items-center gap-1.5 text-xs text-accent">
-                  <Check className="size-3.5" /> Joined — post a NOW
-                </Link>
+                <span className="flex items-center gap-2 text-xs">
+                  {activeEvent?.id === e.id ? (
+                    <>
+                      <span className="wordmark tabular text-accent">
+                        {formatCountdown(activeEvent.secondsLeft)}
+                      </span>
+                      <Link
+                        to="/post"
+                        className="rounded-full bg-accent px-3 py-1 font-medium text-accent-foreground"
+                      >
+                        Post to event
+                      </Link>
+                      <button onClick={leaveActiveEvent} className="text-muted-foreground">
+                        Leave
+                      </button>
+                    </>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Check className="size-3.5" /> Joined — window closed
+                    </span>
+                  )}
+                </span>
               ) : (
                 <button
                   onClick={() => joinEvent(e.id)}

@@ -62,6 +62,9 @@ function Profile() {
       />
 
       <div className="mt-8 space-y-2">
+        <Link to="/friends" className="block rounded-lg border px-4 py-3 text-sm">
+          Friends — see who you're friends with
+        </Link>
         <Link to="/settings" className="block rounded-lg border px-4 py-3 text-sm">
           Privacy & settings
         </Link>
