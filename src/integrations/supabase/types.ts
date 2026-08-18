@@ -14,7 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          blurb: string
+          created_at: string
+          created_by: string | null
+          id: string
+          time_label: string
+          title: string
+        }
+        Insert: {
+          blurb?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          time_label?: string
+          title: string
+        }
+        Update: {
+          blurb?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          time_label?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nows: {
+        Row: {
+          caption: string | null
+          collaborators: string[]
+          created_at: string
+          event_id: string | null
+          id: string
+          once: boolean
+          photo_url: string
+          place: string | null
+          selfie_url: string | null
+          user_id: string
+          video_url: string | null
+          visibility: string
+        }
+        Insert: {
+          caption?: string | null
+          collaborators?: string[]
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          once?: boolean
+          photo_url: string
+          place?: string | null
+          selfie_url?: string | null
+          user_id: string
+          video_url?: string | null
+          visibility?: string
+        }
+        Update: {
+          caption?: string | null
+          collaborators?: string[]
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          once?: boolean
+          photo_url?: string
+          place?: string | null
+          selfie_url?: string | null
+          user_id?: string
+          video_url?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nows_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+          is_pro: boolean
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string
+          created_at?: string
+          display_name?: string
+          handle: string
+          id: string
+          is_pro?: boolean
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string
+          created_at?: string
+          display_name?: string
+          handle?: string
+          id?: string
+          is_pro?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
