@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Users, Lock, Globe2, Trash2 } from "lucide-react";
+import { Eye, MapPin, Users, Lock, Globe2, Trash2 } from "lucide-react";
 import type { NowPost } from "@/lib/nowData";
 import { useNow } from "@/lib/now-store";
 import { ReactionChain } from "./ReactionChain";
@@ -24,6 +24,11 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
       <header className="mb-2 flex items-baseline justify-between">
         <div className="flex items-baseline gap-2">
           <h2 className="text-[15px] font-medium">{post.user}</h2>
+          {post.collaborators?.length ? (
+            <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+              with {post.collaborators.join(", ")}
+            </span>
+          ) : null}
           {post.together ? (
             <span className="rounded-full border border-accent/40 px-2 py-0.5 text-[11px] text-accent">
               with {post.together}
@@ -31,6 +36,7 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
           ) : null}
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
+          {post.once ? <Eye className="size-3 text-accent" /> : null}
           <VIcon className="size-3" />
           <span className="text-[11px]">{post.ago}</span>
           {mine ? (
