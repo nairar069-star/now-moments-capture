@@ -1,9 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Bell, Globe, Sparkles, CalendarDays, Archive, Camera, User } from "lucide-react";
 import { formatCountdown } from "@/lib/now-store";
 import { cn } from "@/lib/utils";
 import { useNow } from "@/lib/now-store";
+import { useAuth } from "@/lib/auth";
 import { DropBanner } from "./DropBanner";
 
 const tabs = [
@@ -25,7 +26,10 @@ export function AppShell({
   action?: ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { drop, pro, notifications, nextDropIn, activeEvent } = useNow();
+  const { drop, notifications, nextDropIn, activeEvent } = useNow();
+  const { user, isPro } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-background sm:max-w-lg">
@@ -33,7 +37,7 @@ export function AppShell({
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-baseline gap-2">
             <span className="wordmark text-2xl leading-none">NOW</span>
-            {pro ? (
+            {isPro ? (
               <span className="rounded-full border border-accent/50 px-1.5 py-0.5 text-[9px] tracking-[0.14em] text-accent uppercase">
                 Pro
               </span>
@@ -52,8 +56,8 @@ export function AppShell({
               ) : null}
             </Link>
             <Link
-              to="/profile"
-              aria-label="Profile"
+              to={user ? "/profile" : "/auth"}
+              aria-label={user ? "Profile" : "Sign in"}
               className="rounded-full p-2 text-foreground/70 transition-colors hover:bg-muted"
             >
               <User className="size-[18px]" />
@@ -70,7 +74,9 @@ export function AppShell({
         ) : (
           <p className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
             <span className="tracking-[0.14em] uppercase">Next NOW drop</span>
-            <span className="wordmark tabular text-sm text-accent">{formatCountdown(nextDropIn)}</span>
+            <span className="wordmark tabular text-sm text-accent">
+              {mounted ? formatCountdown(nextDropIn) : "--:--"}
+            </span>
           </p>
         )}
 
