@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Eye, MapPin, Users, Lock, Globe2, Trash2 } from "lucide-react";
 import type { NowPost } from "@/lib/nowData";
 import { useNow } from "@/lib/now-store";
+import { deleteNow } from "@/lib/nowdb";
 import { ReactionChain } from "./ReactionChain";
 import { cn } from "@/lib/utils";
 
@@ -13,17 +16,37 @@ const visibilityIcon = {
 
 export function NowCard({ post, compact = false }: { post: NowPost; compact?: boolean }) {
   const { guessed, guess, deletePost } = useNow();
+  const queryClient = useQueryClient();
   const [showGuess, setShowGuess] = useState(false);
   const VIcon = visibilityIcon[post.visibility];
   const myGuesses = guessed[post.id] ?? [];
   const correct = post.guessPlace ? myGuesses.includes(post.guessPlace.answer) : false;
-  const mine = post.user === "You";
+  const mine = post.mine ?? post.user === "You";
+
+  async function remove() {
+    if (post.dbId) {
+      await deleteNow(post.dbId);
+      await queryClient.invalidateQueries();
+      return;
+    }
+    deletePost(post.id);
+  }
 
   return (
     <article className="mb-10">
       <header className="mb-2 flex items-baseline justify-between">
         <div className="flex items-baseline gap-2">
-          <h2 className="text-[15px] font-medium">{post.user}</h2>
+          {post.profileHandle ? (
+            <Link
+              to="/u/$handle"
+              params={{ handle: post.profileHandle }}
+              className="text-[15px] font-medium underline-offset-4 hover:underline"
+            >
+              {post.user}
+            </Link>
+          ) : (
+            <h2 className="text-[15px] font-medium">{post.user}</h2>
+          )}
           {post.collaborators?.length ? (
             <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
               with {post.collaborators.join(", ")}
@@ -41,7 +64,7 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
           <span className="text-[11px]">{post.ago}</span>
           {mine ? (
             <button
-              onClick={() => deletePost(post.id)}
+              onClick={() => void remove()}
               aria-label="Delete this NOW"
               className="rounded-full p-1 transition-colors hover:bg-muted hover:text-destructive"
             >

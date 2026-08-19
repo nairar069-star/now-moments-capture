@@ -21,6 +21,9 @@ export type Reaction = {
 
 export type NowPost = {
   id: string;
+  dbId?: string | undefined;
+  mine?: boolean | undefined;
+  profileHandle?: string | undefined;
   user: string;
   handle: string;
   photo: string;

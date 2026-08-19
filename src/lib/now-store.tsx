@@ -75,7 +75,7 @@ type Store = {
   joinedEvents: string[];
   activeEvent: ActiveEvent;
   leaveActiveEvent: () => void;
-  joinEvent: (id: string) => void;
+  joinEvent: (id: string, title?: string) => void;
   createEvent: (input: { title: string; time: string; blurb: string }) => void;
 
   quests: Quest[];
@@ -114,7 +114,7 @@ export function NowProvider({ children }: { children: ReactNode }) {
   const [joinedEvents, setJoinedEvents] = useState<string[]>([]);
   const [activeEvent, setActiveEvent] = useState<ActiveEvent>(null);
   const [friends, setFriends] = useState<Friend[]>(seedFriends);
-  const [nextDropIn, setNextDropIn] = useState(() => 40 + Math.floor(Math.random() * 60));
+  const [nextDropIn, setNextDropIn] = useState(90);
   const [quests, setQuests] = useState<Quest[]>(seedQuests);
   const [joinedQuests, setJoinedQuests] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NowNotification[]>(seedNotifications);
@@ -303,12 +303,12 @@ export function NowProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const joinEvent = useCallback(
-    (id: string) => {
+    (id: string, title?: string) => {
       setJoinedEvents((j) => (j.includes(id) ? j : [...j, id]));
       setEvents((list) => list.map((e) => (e.id === id ? { ...e, joined: e.joined + 1 } : e)));
-      const ev = events.find((e) => e.id === id);
-      setActiveEvent({ id, title: ev?.title ?? "Event", secondsLeft: 180 });
-      notify({ kind: "event", title: "You joined an event", body: ev?.title ?? "See you there." });
+      const label = title ?? events.find((e) => e.id === id)?.title ?? "Event";
+      setActiveEvent({ id, title: label, secondsLeft: 180 });
+      notify({ kind: "event", title: "You joined an event", body: label });
     },
     [events, notify],
   );
