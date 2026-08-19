@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiRouteImport } from './routes/ai'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as MemoriesRouteImport } from './routes/memories'
@@ -21,6 +22,8 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SecretRouteImport } from './routes/secret'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WorldRouteImport } from './routes/world'
+import { Route as EventsIdRouteImport } from './routes/events.$id'
+import { Route as UHandleRouteImport } from './routes/u.$handle'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const AiRoute = AiRouteImport.update({
   id: '/ai',
   path: '/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsRoute = EventsRouteImport.update({
@@ -82,11 +90,22 @@ const WorldRoute = WorldRouteImport.update({
   path: '/world',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventsIdRoute = EventsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => EventsRoute,
+} as any)
+const UHandleRoute = UHandleRouteImport.update({
+  id: '/u/$handle',
+  path: '/u/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
-  '/events': typeof EventsRoute
+  '/auth': typeof AuthRoute
+  '/events': typeof EventsRouteWithChildren
   '/friends': typeof FriendsRoute
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
@@ -96,11 +115,14 @@ export interface FileRoutesByFullPath {
   '/secret': typeof SecretRoute
   '/settings': typeof SettingsRoute
   '/world': typeof WorldRoute
+  '/events/$id': typeof EventsIdRoute
+  '/u/$handle': typeof UHandleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
-  '/events': typeof EventsRoute
+  '/auth': typeof AuthRoute
+  '/events': typeof EventsRouteWithChildren
   '/friends': typeof FriendsRoute
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
@@ -110,12 +132,15 @@ export interface FileRoutesByTo {
   '/secret': typeof SecretRoute
   '/settings': typeof SettingsRoute
   '/world': typeof WorldRoute
+  '/events/$id': typeof EventsIdRoute
+  '/u/$handle': typeof UHandleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
-  '/events': typeof EventsRoute
+  '/auth': typeof AuthRoute
+  '/events': typeof EventsRouteWithChildren
   '/friends': typeof FriendsRoute
   '/memories': typeof MemoriesRoute
   '/notifications': typeof NotificationsRoute
@@ -125,12 +150,15 @@ export interface FileRoutesById {
   '/secret': typeof SecretRoute
   '/settings': typeof SettingsRoute
   '/world': typeof WorldRoute
+  '/events/$id': typeof EventsIdRoute
+  '/u/$handle': typeof UHandleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/ai'
+    | '/auth'
     | '/events'
     | '/friends'
     | '/memories'
@@ -141,10 +169,13 @@ export interface FileRouteTypes {
     | '/secret'
     | '/settings'
     | '/world'
+    | '/events/$id'
+    | '/u/$handle'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/ai'
+    | '/auth'
     | '/events'
     | '/friends'
     | '/memories'
@@ -155,10 +186,13 @@ export interface FileRouteTypes {
     | '/secret'
     | '/settings'
     | '/world'
+    | '/events/$id'
+    | '/u/$handle'
   id:
     | '__root__'
     | '/'
     | '/ai'
+    | '/auth'
     | '/events'
     | '/friends'
     | '/memories'
@@ -169,12 +203,15 @@ export interface FileRouteTypes {
     | '/secret'
     | '/settings'
     | '/world'
+    | '/events/$id'
+    | '/u/$handle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiRoute: typeof AiRoute
-  EventsRoute: typeof EventsRoute
+  AuthRoute: typeof AuthRoute
+  EventsRoute: typeof EventsRouteWithChildren
   FriendsRoute: typeof FriendsRoute
   MemoriesRoute: typeof MemoriesRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -184,6 +221,7 @@ export interface RootRouteChildren {
   SecretRoute: typeof SecretRoute
   SettingsRoute: typeof SettingsRoute
   WorldRoute: typeof WorldRoute
+  UHandleRoute: typeof UHandleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -200,6 +238,13 @@ declare module '@tanstack/react-router' {
       path: '/ai'
       fullPath: '/ai'
       preLoaderRoute: typeof AiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events': {
@@ -272,13 +317,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorldRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/events/$id': {
+      id: '/events/$id'
+      path: '/$id'
+      fullPath: '/events/$id'
+      preLoaderRoute: typeof EventsIdRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/u/$handle': {
+      id: '/u/$handle'
+      path: '/u/$handle'
+      fullPath: '/u/$handle'
+      preLoaderRoute: typeof UHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface EventsRouteChildren {
+  EventsIdRoute: typeof EventsIdRoute
+}
+
+const EventsRouteChildren: EventsRouteChildren = {
+  EventsIdRoute: EventsIdRoute,
+}
+
+const EventsRouteWithChildren =
+  EventsRoute._addFileChildren(EventsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiRoute: AiRoute,
-  EventsRoute: EventsRoute,
+  AuthRoute: AuthRoute,
+  EventsRoute: EventsRouteWithChildren,
   FriendsRoute: FriendsRoute,
   MemoriesRoute: MemoriesRoute,
   NotificationsRoute: NotificationsRoute,
@@ -288,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   SecretRoute: SecretRoute,
   SettingsRoute: SettingsRoute,
   WorldRoute: WorldRoute,
+  UHandleRoute: UHandleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
