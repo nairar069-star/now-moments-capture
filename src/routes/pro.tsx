@@ -1,7 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 import { AppShell } from "@/components/now/AppShell";
-import { useNow } from "@/lib/now-store";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/pro")({
   head: () => ({
@@ -9,7 +11,7 @@ export const Route = createFileRoute("/pro")({
       { title: "NOW Pro — $10/month | NOW" },
       {
         name: "description",
-        content: "NOW Pro lets you create events, join every event, post video NOWs and keep your full archive.",
+        content: "NOW Pro unlocks events: create your own, join every one, and post video NOWs.",
       },
       { property: "og:title", content: "NOW Pro — $10/month" },
       { property: "og:description", content: "Create events, join everything, keep every memory." },
@@ -29,7 +31,23 @@ const perks = [
 ];
 
 function Pro() {
-  const { pro, subscribePro, cancelPro } = useNow();
+  const navigate = useNavigate();
+  const { user, isPro, refreshProfile } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [card, setCard] = useState("");
+  const [paying, setPaying] = useState(false);
+
+  async function setPro(next: boolean) {
+    if (!user) {
+      void navigate({ to: "/auth" });
+      return;
+    }
+    setBusy(true);
+    await supabase.from("profiles").update({ is_pro: next }).eq("id", user.id);
+    await refreshProfile();
+    setBusy(false);
+    setPaying(false);
+  }
 
   return (
     <AppShell title="NOW Pro" subtitle="Ten dollars a month. That's it.">
@@ -48,22 +66,56 @@ function Pro() {
         ))}
       </ul>
 
-      {pro ? (
+      {!user ? (
+        <Link
+          to="/auth"
+          className="mt-8 block rounded-full bg-accent px-4 py-3.5 text-center text-sm font-medium text-accent-foreground"
+        >
+          Sign in to subscribe
+        </Link>
+      ) : isPro ? (
         <div className="mt-8 space-y-3">
-          <p className="text-sm text-accent">Pro is active.</p>
+          <p className="text-sm text-accent">Pro is active. Events are unlocked.</p>
           <Link
             to="/events"
             className="block rounded-full bg-accent px-4 py-3 text-center text-sm font-medium text-accent-foreground"
           >
-            Create an event
+            Go to events
           </Link>
-          <button onClick={cancelPro} className="w-full rounded-full border px-4 py-3 text-sm">
+          <button
+            onClick={() => void setPro(false)}
+            disabled={busy}
+            className="w-full rounded-full border px-4 py-3 text-sm"
+          >
             Cancel membership
           </button>
         </div>
+      ) : paying ? (
+        <div className="mt-8 space-y-4 rounded-2xl border p-4">
+          <p className="meta-label">Card details</p>
+          <input
+            value={card}
+            onChange={(e) => setCard(e.target.value.replace(/[^0-9 ]/g, "").slice(0, 19))}
+            inputMode="numeric"
+            placeholder="4242 4242 4242 4242"
+            className="w-full border-b bg-transparent pb-2 text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <div className="flex gap-2">
+            <button onClick={() => setPaying(false)} className="flex-1 rounded-full border py-2.5 text-sm">
+              Cancel
+            </button>
+            <button
+              onClick={() => void setPro(true)}
+              disabled={busy || card.replace(/\D/g, "").length < 12}
+              className="flex-1 rounded-full bg-accent py-2.5 text-sm font-medium text-accent-foreground disabled:opacity-40"
+            >
+              {busy ? "Paying…" : "Pay $10"}
+            </button>
+          </div>
+        </div>
       ) : (
         <button
-          onClick={subscribePro}
+          onClick={() => setPaying(true)}
           className="mt-8 w-full rounded-full bg-accent px-4 py-3.5 text-sm font-medium text-accent-foreground transition-transform active:scale-[0.98]"
         >
           Subscribe for $10/month
@@ -71,7 +123,8 @@ function Pro() {
       )}
 
       <p className="mt-4 text-xs text-muted-foreground">
-        This prototype does not charge a real card. Billing is simulated.
+        This prototype does not charge a real card. Billing is simulated, but your membership is saved to your
+        account.
       </p>
     </AppShell>
   );
