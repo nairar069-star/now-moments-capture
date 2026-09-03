@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/now/AppShell";
 import { NowCard } from "@/components/now/NowCard";
 import { useNow } from "@/lib/now-store";
 import { me } from "@/lib/nowData";
+import { useAuth } from "@/lib/auth";
+import { fetchFeed } from "@/lib/nowdb";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,6 +31,11 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { feed, secrets, drop, postedToday, quests, joinedQuests, joinQuest, togetherRequests, answerTogether } =
     useNow();
+  const { user } = useAuth();
+  const dbFeed = useQuery({
+    queryKey: ["feed", user?.id ?? null],
+    queryFn: () => fetchFeed(user?.id ?? null),
+  });
   const unopened = secrets.filter((s) => !s.opened);
   const quest = quests[0]!;
   const pending = togetherRequests.filter((t) => t.status === "pending");
@@ -90,6 +98,20 @@ function Home() {
           )}
         </div>
       </div>
+
+      {!user ? (
+        <Link
+          to="/auth"
+          className="mb-8 flex items-center justify-between rounded-xl bg-foreground px-4 py-3.5 text-sm text-background"
+        >
+          Sign in to post your own NOW
+          <span className="text-[11px] tracking-[0.14em] uppercase opacity-70">Join</span>
+        </Link>
+      ) : null}
+
+      {(dbFeed.data ?? []).map((post) => (
+        <NowCard key={post.id} post={post} />
+      ))}
 
       {feed.map((post) => (
         <NowCard key={post.id} post={post} />

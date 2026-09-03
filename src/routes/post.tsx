@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Eye, RefreshCw, Square, Users, Video, X } from "lucide-react";
 import { formatCountdown, useNow } from "@/lib/now-store";
 import { photos, type Visibility } from "@/lib/nowData";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { uploadMedia } from "@/lib/nowdb";
 
 export const Route = createFileRoute("/post")({
   head: () => ({
@@ -29,6 +33,10 @@ type Mode = "photo" | "video" | "dual";
 
 function Compose() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState("");
   const { postNow, drop, doubleNow, cities, worldPlace, activeEvent, friends } = useNow();
   const videoRef = useRef<HTMLVideoElement>(null);
   const frontRef = useRef<HTMLVideoElement>(null);
@@ -159,7 +167,41 @@ function Compose() {
     }
   }
 
-  function publish() {
+  async function publish() {
+    if (!user) {
+      void navigate({ to: "/auth" });
+      return;
+    }
+    setPublishing(true);
+    setPublishError("");
+    try {
+      const photoPath = await uploadMedia(user.id, "nows", shots[0] ?? photos[0]!, "jpg");
+      const videoPath = clip ? await uploadMedia(user.id, "nows", clip, "webm") : null;
+      const selfiePath = shots[1] ? await uploadMedia(user.id, "nows", shots[1], "jpg") : null;
+      const { error } = await supabase.from("nows").insert({
+        user_id: user.id,
+        photo_url: photoPath,
+        video_url: videoPath,
+        selfie_url: selfiePath,
+        caption: caption || null,
+        place: place || null,
+        visibility,
+        once,
+        collaborators,
+        event_id: activeEvent?.id ?? null,
+      });
+      if (error) throw error;
+      await queryClient.invalidateQueries();
+    } catch (e) {
+      setPublishing(false);
+      setPublishError(e instanceof Error ? e.message : "Could not post your NOW.");
+      return;
+    }
+    setPublishing(false);
+    postNowLocal();
+  }
+
+  function postNowLocal() {
     postNow({
       photo: shots[0] ?? photos[0]!,
       video: clip,
@@ -171,7 +213,7 @@ function Compose() {
       collaborators,
       eventId: activeEvent?.id,
     });
-    navigate({ to: activeEvent ? "/events" : "/" });
+    void navigate({ to: activeEvent ? "/events" : "/" });
   }
 
   return (
