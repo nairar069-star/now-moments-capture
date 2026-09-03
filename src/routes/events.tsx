@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Plus, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/now/AppShell";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { fetchEvents } from "@/lib/nowdb";
 import { formatCountdown, useNow } from "@/lib/now-store";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/events")({
   head: () => ({
@@ -26,22 +29,43 @@ export const Route = createFileRoute("/events")({
 });
 
 function Events() {
-  const { events, joinedEvents, joinEvent, createEvent, quests, joinedQuests, joinQuest, pro, activeEvent, leaveActiveEvent } =
-    useNow();
+  const { quests, joinedQuests, joinQuest, joinedEvents, joinEvent, activeEvent, leaveActiveEvent } = useNow();
+  const { user, isPro } = useAuth();
+  const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
   const [blurb, setBlurb] = useState("");
+  const [error, setError] = useState("");
+
+  const eventsQuery = useQuery({ queryKey: ["events"], queryFn: fetchEvents });
+
+  async function create() {
+    if (!user) return;
+    const { error: err } = await supabase.from("events").insert({
+      title: title.trim(),
+      time_label: time.trim() || "Today",
+      blurb: blurb.trim(),
+      created_by: user.id,
+    });
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setTitle("");
+    setTime("");
+    setBlurb("");
+    setCreating(false);
+    setError("");
+    await queryClient.invalidateQueries({ queryKey: ["events"] });
+  }
 
   return (
     <AppShell title="Events" subtitle="Collective moments, all at once.">
-      {pro ? (
+      {isPro ? (
         <div className="mb-8 rounded-2xl border p-4">
           {!creating ? (
-            <button
-              onClick={() => setCreating(true)}
-              className="flex w-full items-center justify-between text-sm"
-            >
+            <button onClick={() => setCreating(true)} className="flex w-full items-center justify-between text-sm">
               <span className="flex items-center gap-2">
                 <Plus className="size-4" /> Create an event
               </span>
@@ -73,24 +97,19 @@ function Events() {
                 </button>
                 <button
                   disabled={!title.trim()}
-                  onClick={() => {
-                    createEvent({ title: title.trim(), time: time.trim(), blurb: blurb.trim() });
-                    setTitle("");
-                    setTime("");
-                    setBlurb("");
-                    setCreating(false);
-                  }}
+                  onClick={() => void create()}
                   className="flex-1 rounded-full bg-accent py-2.5 text-sm font-medium text-accent-foreground disabled:opacity-40"
                 >
                   Create
                 </button>
               </div>
+              {error ? <p className="text-xs text-destructive">{error}</p> : null}
             </div>
           )}
         </div>
       ) : (
         <Link
-          to="/pro"
+          to={user ? "/pro" : "/auth"}
           className="mb-8 flex items-center justify-between rounded-2xl bg-foreground px-4 py-4 text-background"
         >
           <span>
@@ -99,88 +118,66 @@ function Events() {
             </span>
             <span className="mt-1 block text-xs opacity-70">NOW Pro — $10/month</span>
           </span>
-          <span className="text-[11px] tracking-[0.14em] uppercase">Upgrade</span>
+          <span className="text-[11px] tracking-[0.14em] uppercase">Unlock</span>
         </Link>
       )}
 
-      {events.map((e) => {
+      {eventsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading events…</p> : null}
+
+      {(eventsQuery.data ?? []).map((e) => {
         const joined = joinedEvents.includes(e.id);
         return (
-          <section key={e.id} className="mb-10">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-lg font-semibold">{e.title}</h2>
-              <span
-                className={cn(
-                  "shrink-0 text-[11px] tracking-[0.14em] uppercase",
-                  e.status === "live" ? "text-accent" : "text-muted-foreground",
-                )}
-              >
-                {e.status === "live" ? "Live" : e.time}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">{e.blurb}</p>
-            <div className="mt-3 grid grid-cols-4 gap-1.5">
-              {e.photos.map((p, i) => (
-                <img
-                  key={i}
-                  src={p}
-                  alt=""
-                  loading="lazy"
-                  width={768}
-                  height={1024}
-                  className="aspect-square w-full rounded-lg object-cover"
-                />
-              ))}
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <p className="text-[11px] text-muted-foreground">{e.joined.toLocaleString()} joined</p>
-              {e.status === "past" ? (
-                <span className="meta-label">Ended</span>
-              ) : joined ? (
-                <span className="flex items-center gap-2 text-xs">
-                  {activeEvent?.id === e.id ? (
-                    <>
-                      <span className="wordmark tabular text-accent">
-                        {formatCountdown(activeEvent.secondsLeft)}
-                      </span>
-                      <Link
-                        to="/post"
-                        className="rounded-full bg-accent px-3 py-1 font-medium text-accent-foreground"
-                      >
-                        Post to event
-                      </Link>
-                      <button onClick={leaveActiveEvent} className="text-muted-foreground">
-                        Leave
-                      </button>
-                    </>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Check className="size-3.5" /> Joined — window closed
-                    </span>
-                  )}
+          <section key={e.id} className="mb-8 rounded-2xl border p-4">
+            <Link to="/events/$id" params={{ id: e.id }} className="block">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-lg font-semibold">{e.title}</h2>
+                <span className="shrink-0 text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
+                  {e.time_label}
                 </span>
-              ) : (
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{e.blurb}</p>
+              <p className="mt-2 text-[11px] text-accent">Open event — see everyone's NOWs</p>
+            </Link>
+
+            <div className="mt-3 flex items-center justify-between">
+              {joined ? (
+                activeEvent?.id === e.id ? (
+                  <span className="flex items-center gap-2 text-xs">
+                    <span className="wordmark tabular text-accent">{formatCountdown(activeEvent.secondsLeft)}</span>
+                    <Link to="/post" className="rounded-full bg-accent px-3 py-1 font-medium text-accent-foreground">
+                      Post to event
+                    </Link>
+                    <button onClick={leaveActiveEvent} className="text-muted-foreground">
+                      Leave
+                    </button>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Check className="size-3.5" /> Joined — window closed
+                  </span>
+                )
+              ) : !user ? (
+                <Link to="/auth" className="rounded-full border px-4 py-1.5 text-xs">
+                  Sign in to join
+                </Link>
+              ) : isPro ? (
                 <button
-                  onClick={() => joinEvent(e.id)}
+                  onClick={() => joinEvent(e.id, e.title)}
                   className="rounded-full border px-4 py-1.5 text-xs transition-colors hover:bg-muted"
                 >
-                  {pro ? "Join" : "Join with Pro"}
+                  Join
                 </button>
+              ) : (
+                <Link to="/pro" className="rounded-full border px-4 py-1.5 text-xs">
+                  Join with Pro
+                </Link>
               )}
             </div>
-            {!pro && !joined && e.status !== "past" ? (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Joining events is part of NOW Pro.{" "}
-                <Link to="/pro" className="underline underline-offset-4">
-                  See Pro
-                </Link>
-              </p>
-            ) : null}
           </section>
         );
       })}
 
-      <h2 className="meta-label mb-3">NOW Quest</h2>
+      <h2 className="meta-label mt-10 mb-3">NOW Quest</h2>
       <ul className="space-y-3">
         {quests.map((q) => {
           const joined = joinedQuests.includes(q.id);
