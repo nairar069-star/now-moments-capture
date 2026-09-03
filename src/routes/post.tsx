@@ -455,12 +455,14 @@ function Compose() {
               Retake
             </button>
             <button
-              onClick={publish}
-              className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground"
+              onClick={() => void publish()}
+              disabled={publishing}
+              className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground disabled:opacity-40"
             >
-              {activeEvent ? "Send to event" : "Post a NOW"}
+              {publishing ? "Posting…" : activeEvent ? "Send to event" : "Post a NOW"}
             </button>
           </div>
+          {publishError ? <p className="text-xs text-destructive">{publishError}</p> : null}
         </div>
       )}
     </div>
