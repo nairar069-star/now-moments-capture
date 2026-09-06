@@ -31,9 +31,21 @@ const visibilities: { key: Visibility; label: string }[] = [
 
 type Mode = "photo" | "video" | "dual";
 
+type FormatKey = "portrait" | "square" | "landscape";
+
+const formats: { key: FormatKey; label: string; value: number; aspect: string }[] = [
+  { key: "portrait", label: "Portrait", value: 4 / 5, aspect: "aspect-[4/5]" },
+  { key: "square", label: "Square", value: 1, aspect: "aspect-square" },
+  { key: "landscape", label: "Landscape", value: 4 / 3, aspect: "aspect-[4/3]" },
+];
+
+
 function Compose() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isPro } = useAuth();
+  const [format, setFormat] = useState<FormatKey>("portrait");
+  const galleryRef = useRef<HTMLInputElement>(null);
+
   const queryClient = useQueryClient();
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
@@ -132,16 +144,37 @@ function Compose() {
   }, [mode, dualVideo, dualMain]);
 
 
+  // Crop any source to the chosen frame format.
+  function cropTo(source: HTMLVideoElement | HTMLImageElement, sw: number, sh: number) {
+    const target = formats.find((f) => f.key === format)!.value;
+    const canvas = document.createElement("canvas");
+    const cropW = Math.min(sw, sh * target);
+    const cropH = cropW / target;
+    canvas.width = Math.round(cropW);
+    canvas.height = Math.round(cropH);
+    canvas
+      .getContext("2d")
+      ?.drawImage(source, (sw - cropW) / 2, (sh - cropH) / 2, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  }
+
   function grab(el: HTMLVideoElement | null) {
     if (el && el.videoWidth) {
-      const canvas = document.createElement("canvas");
-      canvas.width = el.videoWidth;
-      canvas.height = el.videoHeight;
       // No mirroring: the frame is drawn exactly as the sensor sees it.
-      canvas.getContext("2d")?.drawImage(el, 0, 0);
-      return canvas.toDataURL("image/jpeg", 0.85);
+      return cropTo(el, el.videoWidth, el.videoHeight);
     }
     return photos[Math.floor(Math.random() * photos.length)]!;
+  }
+
+  function pickFromGallery(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => setShots([cropTo(img, img.naturalWidth, img.naturalHeight)]);
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
   }
 
   function capture() {
@@ -150,6 +183,7 @@ function Compose() {
     setShots(next);
     if (doubleNow && mode === "photo" && next.length === 1) setFacing("user");
   }
+
 
   function toggleRecording() {
     if (recording) {
@@ -308,6 +342,26 @@ function Compose() {
               ))}
             </div>
           ) : null}
+          {mode !== "video" && !dualVideo ? (
+            <div className="mt-3">
+              <p className="meta-label mb-2">Format</p>
+              <div className="flex gap-2">
+                {formats.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFormat(f.key)}
+                    className={cn(
+                      "flex-1 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                      format === f.key ? "border-foreground font-medium" : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
         </>
       ) : null}
 
@@ -420,10 +474,34 @@ function Compose() {
               )}
             </span>
           </button>
-          <span className="w-11 text-center text-[11px] text-muted-foreground">
-            {dualPhoto || (doubleNow && mode === "photo") ? `${shots.length}/2` : ""}
-          </span>
+          {mode === "photo" ? (
+            <div className="w-11 text-center">
+              <input
+                ref={galleryRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  pickFromGallery(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={() => (isPro ? galleryRef.current?.click() : void navigate({ to: "/pro" }))}
+                aria-label={isPro ? "Add photo from gallery" : "Gallery is a Pro feature"}
+                className="rounded-full p-3 text-muted-foreground hover:bg-muted"
+              >
+                <ImagePlus className="size-5" />
+              </button>
+              <span className="block text-[10px] text-muted-foreground">{isPro ? "Gallery" : "Pro"}</span>
+            </div>
+          ) : (
+            <span className="w-11 text-center text-[11px] text-muted-foreground">
+              {dualPhoto ? `${shots.length}/2` : ""}
+            </span>
+          )}
         </div>
+
       ) : (
 
         <div className="mt-6 space-y-5">
