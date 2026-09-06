@@ -132,16 +132,37 @@ function Compose() {
   }, [mode, dualVideo, dualMain]);
 
 
+  // Crop any source to the chosen frame format.
+  function cropTo(source: HTMLVideoElement | HTMLImageElement, sw: number, sh: number) {
+    const target = formats.find((f) => f.key === format)!.value;
+    const canvas = document.createElement("canvas");
+    const cropW = Math.min(sw, sh * target);
+    const cropH = cropW / target;
+    canvas.width = Math.round(cropW);
+    canvas.height = Math.round(cropH);
+    canvas
+      .getContext("2d")
+      ?.drawImage(source, (sw - cropW) / 2, (sh - cropH) / 2, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  }
+
   function grab(el: HTMLVideoElement | null) {
     if (el && el.videoWidth) {
-      const canvas = document.createElement("canvas");
-      canvas.width = el.videoWidth;
-      canvas.height = el.videoHeight;
       // No mirroring: the frame is drawn exactly as the sensor sees it.
-      canvas.getContext("2d")?.drawImage(el, 0, 0);
-      return canvas.toDataURL("image/jpeg", 0.85);
+      return cropTo(el, el.videoWidth, el.videoHeight);
     }
     return photos[Math.floor(Math.random() * photos.length)]!;
+  }
+
+  function pickFromGallery(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => setShots([cropTo(img, img.naturalWidth, img.naturalHeight)]);
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
   }
 
   function capture() {
@@ -150,6 +171,7 @@ function Compose() {
     setShots(next);
     if (doubleNow && mode === "photo" && next.length === 1) setFacing("user");
   }
+
 
   function toggleRecording() {
     if (recording) {
