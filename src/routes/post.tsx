@@ -145,14 +145,10 @@ function Compose() {
   }
 
   function capture() {
-    if (mode === "dual") {
-      // Both cameras at once.
-      setShots([grab(videoRef.current), grab(dualLive ? frontRef.current : null)]);
-      return;
-    }
+    // Dual photo: one camera at a time — main first, then the small one.
     const next = [...shots, grab(live ? videoRef.current : null)].slice(0, needed);
     setShots(next);
-    if (doubleNow && next.length === 1) setFacing("user");
+    if (doubleNow && mode === "photo" && next.length === 1) setFacing("user");
   }
 
   function toggleRecording() {
@@ -166,18 +162,30 @@ function Compose() {
       const rec = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
       rec.ondataavailable = (e) => chunks.push(e.data);
+      // Dual video: the second camera records at the same time.
+      let rec2: MediaRecorder | null = null;
+      if (dualVideo && frontStreamRef.current) {
+        const chunks2: BlobPart[] = [];
+        rec2 = new MediaRecorder(frontStreamRef.current);
+        rec2.ondataavailable = (e) => chunks2.push(e.data);
+        rec2.onstop = () =>
+          setClip2(URL.createObjectURL(new Blob(chunks2, { type: rec2!.mimeType || "video/webm" })));
+      }
       rec.onstop = () => {
+        if (rec2 && rec2.state === "recording") rec2.stop();
         setClip(URL.createObjectURL(new Blob(chunks, { type: rec.mimeType || "video/webm" })));
         setRecording(false);
       };
       recorderRef.current = rec;
       rec.start();
+      rec2?.start();
       setRecording(true);
       setTimeout(() => rec.state === "recording" && rec.stop(), 15000);
     } catch {
       setRecording(false);
     }
   }
+
 
   async function publish() {
     if (!user) {
