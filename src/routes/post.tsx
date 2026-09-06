@@ -45,19 +45,25 @@ function Compose() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [mode, setMode] = useState<Mode>("photo");
+  const [dualMain, setDualMain] = useState<"user" | "environment">("user");
+  const [dualVideo, setDualVideo] = useState(false);
   const [recording, setRecording] = useState(false);
   const [live, setLive] = useState(false);
   const [dualLive, setDualLive] = useState(false);
   const [shots, setShots] = useState<string[]>([]);
   const [clip, setClip] = useState<string | undefined>(undefined);
+  const [clip2, setClip2] = useState<string | undefined>(undefined);
   const [caption, setCaption] = useState("");
   const [place, setPlace] = useState<string>("");
   const [visibility, setVisibility] = useState<Visibility>("friends");
   const [once, setOnce] = useState(false);
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const myFriends = friends.filter((f) => f.status === "friend");
-  const needed = mode === "dual" ? 2 : doubleNow && mode === "photo" ? 2 : 1;
+  const other = (f: "user" | "environment") => (f === "user" ? "environment" : "user");
+  const dualPhoto = mode === "dual" && !dualVideo;
+  const needed = dualPhoto ? 2 : doubleNow && mode === "photo" ? 2 : 1;
   const done = clip ? true : shots.length >= needed;
+
 
   // Main camera stream.
   useEffect(() => {
