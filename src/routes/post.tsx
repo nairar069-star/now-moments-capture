@@ -264,24 +264,51 @@ function Compose() {
       ) : null}
 
       {!done ? (
-        <div className="mt-4 flex justify-center gap-1 rounded-full bg-muted p-1 text-xs">
-          {(["photo", "video", "dual"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                setMode(m);
-                setShots([]);
-                setClip(undefined);
-              }}
-              className={cn(
-                "flex-1 rounded-full py-2 capitalize transition-colors",
-                mode === m ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="mt-4 flex justify-center gap-1 rounded-full bg-muted p-1 text-xs">
+            {(["photo", "video", "dual"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setShots([]);
+                  setClip(undefined);
+                  setClip2(undefined);
+                }}
+                className={cn(
+                  "flex-1 rounded-full py-2 capitalize transition-colors",
+                  mode === m ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          {mode === "dual" ? (
+            <div className="mt-2 flex justify-center gap-1 rounded-full bg-muted p-1 text-xs">
+              {[
+                { k: false, label: "Dual photo" },
+                { k: true, label: "Dual video" },
+              ].map((o) => (
+                <button
+                  key={o.label}
+                  onClick={() => {
+                    setDualVideo(o.k);
+                    setShots([]);
+                    setClip(undefined);
+                    setClip2(undefined);
+                  }}
+                  className={cn(
+                    "flex-1 rounded-full py-1.5 transition-colors",
+                    dualVideo === o.k ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       <div className="relative mt-4 overflow-hidden rounded-2xl bg-foreground/90">
@@ -293,7 +320,7 @@ function Compose() {
           style={{ transform: "none" }}
           className={cn("aspect-[4/5] w-full object-cover", done && "opacity-0")}
         />
-        {mode === "dual" && !done ? (
+        {mode === "dual" && dualVideo && !done ? (
           <video
             ref={frontRef}
             playsInline
@@ -302,6 +329,14 @@ function Compose() {
             className="absolute top-3 left-3 h-32 w-24 rounded-lg border-2 border-background/80 bg-foreground object-cover"
           />
         ) : null}
+        {dualPhoto && shots[0] && !done ? (
+          <img
+            src={shots[0]}
+            alt=""
+            className="absolute top-3 left-3 h-32 w-24 rounded-lg border-2 border-background/80 object-cover"
+          />
+        ) : null}
+
         {clip ? (
           <video
             src={clip}
