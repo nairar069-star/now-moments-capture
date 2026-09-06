@@ -347,7 +347,14 @@ function Compose() {
         ) : shots[0] && done ? (
           <img src={shots[0]} alt="Your NOW" className="absolute inset-0 h-full w-full object-cover" />
         ) : null}
-        {shots[1] && done ? (
+        {clip2 && done ? (
+          <video
+            src={clip2}
+            controls
+            playsInline
+            className="absolute top-3 left-3 h-28 w-20 rounded-lg border-2 border-background/80 bg-foreground object-cover"
+          />
+        ) : shots[1] && done ? (
           <img
             src={shots[1]}
             alt=""
@@ -364,9 +371,9 @@ function Compose() {
             Camera unavailable — tap the shutter to use a sample frame.
           </p>
         ) : null}
-        {mode === "dual" && live && !dualLive && !done ? (
+        {mode === "dual" && dualVideo && live && !dualLive && !done ? (
           <p className="absolute inset-x-0 bottom-4 text-center text-xs text-background/80">
-            Only one camera on this device — the second frame is a sample.
+            Only one camera on this device — the second clip is unavailable.
           </p>
         ) : null}
       </div>
@@ -374,16 +381,26 @@ function Compose() {
       {!done ? (
         <div className="mt-6 flex items-center justify-center gap-8">
           <button
-            onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+            onClick={() =>
+              mode === "dual"
+                ? setDualMain((f) => other(f))
+                : setFacing((f) => (f === "user" ? "environment" : "user"))
+            }
             aria-label="Flip camera"
-            disabled={mode === "dual"}
+            disabled={dualPhoto && shots.length > 0}
             className="rounded-full p-3 text-muted-foreground hover:bg-muted disabled:opacity-30"
           >
             <RefreshCw className="size-5" />
           </button>
           <button
-            onClick={mode === "video" ? toggleRecording : capture}
-            aria-label={mode === "video" ? (recording ? "Stop recording" : "Record video") : "Take photo"}
+            onClick={mode === "video" || dualVideo ? toggleRecording : capture}
+            aria-label={
+              mode === "video" || dualVideo
+                ? recording
+                  ? "Stop recording"
+                  : "Record video"
+                : "Take photo"
+            }
             className="flex size-18 items-center justify-center rounded-full border-2 border-foreground p-1 transition-transform active:scale-95"
           >
             <span
@@ -392,7 +409,7 @@ function Compose() {
                 recording ? "bg-destructive" : "bg-foreground",
               )}
             >
-              {mode === "video" ? (
+              {mode === "video" || dualVideo ? (
                 recording ? (
                   <Square className="size-4" />
                 ) : (
@@ -404,10 +421,11 @@ function Compose() {
             </span>
           </button>
           <span className="w-11 text-center text-[11px] text-muted-foreground">
-            {doubleNow && mode === "photo" ? `${shots.length}/2` : ""}
+            {dualPhoto || (doubleNow && mode === "photo") ? `${shots.length}/2` : ""}
           </span>
         </div>
       ) : (
+
         <div className="mt-6 space-y-5">
           <input
             value={caption}
