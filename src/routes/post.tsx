@@ -66,14 +66,16 @@ function Compose() {
 
 
   // Main camera stream.
+  const mainFacing =
+    mode !== "dual" ? facing : dualPhoto && shots.length === 1 ? other(dualMain) : dualMain;
   useEffect(() => {
     let stream: MediaStream | null = null;
     let cancelled = false;
     (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: mode === "dual" ? "environment" : facing },
-          audio: mode === "video",
+          video: { facingMode: mainFacing },
+          audio: mode === "video" || dualVideo,
         });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -93,11 +95,11 @@ function Compose() {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [facing, mode]);
+  }, [mainFacing, mode, dualVideo]);
 
-  // Dual camera: a second, simultaneous front stream.
+  // Dual video: a second, simultaneous stream so both cameras record at once.
   useEffect(() => {
-    if (mode !== "dual") {
+    if (mode !== "dual" || !dualVideo) {
       setDualLive(false);
       return;
     }
@@ -105,7 +107,10 @@ function Compose() {
     let cancelled = false;
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: other(dualMain) },
+          audio: false,
+        });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -124,7 +129,8 @@ function Compose() {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [mode]);
+  }, [mode, dualVideo, dualMain]);
+
 
   function grab(el: HTMLVideoElement | null) {
     if (el && el.videoWidth) {
