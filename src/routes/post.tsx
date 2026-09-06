@@ -342,6 +342,26 @@ function Compose() {
               ))}
             </div>
           ) : null}
+          {mode !== "video" && !dualVideo ? (
+            <div className="mt-3">
+              <p className="meta-label mb-2">Format</p>
+              <div className="flex gap-2">
+                {formats.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFormat(f.key)}
+                    className={cn(
+                      "flex-1 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                      format === f.key ? "border-foreground font-medium" : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
         </>
       ) : null}
 
