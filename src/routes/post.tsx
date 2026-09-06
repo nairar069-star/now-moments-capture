@@ -45,29 +45,37 @@ function Compose() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [mode, setMode] = useState<Mode>("photo");
+  const [dualMain, setDualMain] = useState<"user" | "environment">("user");
+  const [dualVideo, setDualVideo] = useState(false);
   const [recording, setRecording] = useState(false);
   const [live, setLive] = useState(false);
   const [dualLive, setDualLive] = useState(false);
   const [shots, setShots] = useState<string[]>([]);
   const [clip, setClip] = useState<string | undefined>(undefined);
+  const [clip2, setClip2] = useState<string | undefined>(undefined);
   const [caption, setCaption] = useState("");
   const [place, setPlace] = useState<string>("");
   const [visibility, setVisibility] = useState<Visibility>("friends");
   const [once, setOnce] = useState(false);
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const myFriends = friends.filter((f) => f.status === "friend");
-  const needed = mode === "dual" ? 2 : doubleNow && mode === "photo" ? 2 : 1;
+  const other = (f: "user" | "environment") => (f === "user" ? "environment" : "user");
+  const dualPhoto = mode === "dual" && !dualVideo;
+  const needed = dualPhoto ? 2 : doubleNow && mode === "photo" ? 2 : 1;
   const done = clip ? true : shots.length >= needed;
 
+
   // Main camera stream.
+  const mainFacing =
+    mode !== "dual" ? facing : dualPhoto && shots.length === 1 ? other(dualMain) : dualMain;
   useEffect(() => {
     let stream: MediaStream | null = null;
     let cancelled = false;
     (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: mode === "dual" ? "environment" : facing },
-          audio: mode === "video",
+          video: { facingMode: mainFacing },
+          audio: mode === "video" || dualVideo,
         });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -87,11 +95,11 @@ function Compose() {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [facing, mode]);
+  }, [mainFacing, mode, dualVideo]);
 
-  // Dual camera: a second, simultaneous front stream.
+  // Dual video: a second, simultaneous stream so both cameras record at once.
   useEffect(() => {
-    if (mode !== "dual") {
+    if (mode !== "dual" || !dualVideo) {
       setDualLive(false);
       return;
     }
@@ -99,7 +107,10 @@ function Compose() {
     let cancelled = false;
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: other(dualMain) },
+          audio: false,
+        });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -118,7 +129,8 @@ function Compose() {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [mode]);
+  }, [mode, dualVideo, dualMain]);
+
 
   function grab(el: HTMLVideoElement | null) {
     if (el && el.videoWidth) {
@@ -133,14 +145,10 @@ function Compose() {
   }
 
   function capture() {
-    if (mode === "dual") {
-      // Both cameras at once.
-      setShots([grab(videoRef.current), grab(dualLive ? frontRef.current : null)]);
-      return;
-    }
+    // Dual photo: one camera at a time — main first, then the small one.
     const next = [...shots, grab(live ? videoRef.current : null)].slice(0, needed);
     setShots(next);
-    if (doubleNow && next.length === 1) setFacing("user");
+    if (doubleNow && mode === "photo" && next.length === 1) setFacing("user");
   }
 
   function toggleRecording() {
@@ -154,18 +162,30 @@ function Compose() {
       const rec = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
       rec.ondataavailable = (e) => chunks.push(e.data);
+      // Dual video: the second camera records at the same time.
+      let rec2: MediaRecorder | null = null;
+      if (dualVideo && frontStreamRef.current) {
+        const chunks2: BlobPart[] = [];
+        rec2 = new MediaRecorder(frontStreamRef.current);
+        rec2.ondataavailable = (e) => chunks2.push(e.data);
+        rec2.onstop = () =>
+          setClip2(URL.createObjectURL(new Blob(chunks2, { type: rec2!.mimeType || "video/webm" })));
+      }
       rec.onstop = () => {
+        if (rec2 && rec2.state === "recording") rec2.stop();
         setClip(URL.createObjectURL(new Blob(chunks, { type: rec.mimeType || "video/webm" })));
         setRecording(false);
       };
       recorderRef.current = rec;
       rec.start();
+      rec2?.start();
       setRecording(true);
       setTimeout(() => rec.state === "recording" && rec.stop(), 15000);
     } catch {
       setRecording(false);
     }
   }
+
 
   async function publish() {
     if (!user) {
@@ -244,24 +264,51 @@ function Compose() {
       ) : null}
 
       {!done ? (
-        <div className="mt-4 flex justify-center gap-1 rounded-full bg-muted p-1 text-xs">
-          {(["photo", "video", "dual"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                setMode(m);
-                setShots([]);
-                setClip(undefined);
-              }}
-              className={cn(
-                "flex-1 rounded-full py-2 capitalize transition-colors",
-                mode === m ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="mt-4 flex justify-center gap-1 rounded-full bg-muted p-1 text-xs">
+            {(["photo", "video", "dual"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setShots([]);
+                  setClip(undefined);
+                  setClip2(undefined);
+                }}
+                className={cn(
+                  "flex-1 rounded-full py-2 capitalize transition-colors",
+                  mode === m ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          {mode === "dual" ? (
+            <div className="mt-2 flex justify-center gap-1 rounded-full bg-muted p-1 text-xs">
+              {[
+                { k: false, label: "Dual photo" },
+                { k: true, label: "Dual video" },
+              ].map((o) => (
+                <button
+                  key={o.label}
+                  onClick={() => {
+                    setDualVideo(o.k);
+                    setShots([]);
+                    setClip(undefined);
+                    setClip2(undefined);
+                  }}
+                  className={cn(
+                    "flex-1 rounded-full py-1.5 transition-colors",
+                    dualVideo === o.k ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       <div className="relative mt-4 overflow-hidden rounded-2xl bg-foreground/90">
@@ -273,7 +320,7 @@ function Compose() {
           style={{ transform: "none" }}
           className={cn("aspect-[4/5] w-full object-cover", done && "opacity-0")}
         />
-        {mode === "dual" && !done ? (
+        {mode === "dual" && dualVideo && !done ? (
           <video
             ref={frontRef}
             playsInline
@@ -282,6 +329,14 @@ function Compose() {
             className="absolute top-3 left-3 h-32 w-24 rounded-lg border-2 border-background/80 bg-foreground object-cover"
           />
         ) : null}
+        {dualPhoto && shots[0] && !done ? (
+          <img
+            src={shots[0]}
+            alt=""
+            className="absolute top-3 left-3 h-32 w-24 rounded-lg border-2 border-background/80 object-cover"
+          />
+        ) : null}
+
         {clip ? (
           <video
             src={clip}
@@ -292,7 +347,14 @@ function Compose() {
         ) : shots[0] && done ? (
           <img src={shots[0]} alt="Your NOW" className="absolute inset-0 h-full w-full object-cover" />
         ) : null}
-        {shots[1] && done ? (
+        {clip2 && done ? (
+          <video
+            src={clip2}
+            controls
+            playsInline
+            className="absolute top-3 left-3 h-28 w-20 rounded-lg border-2 border-background/80 bg-foreground object-cover"
+          />
+        ) : shots[1] && done ? (
           <img
             src={shots[1]}
             alt=""
@@ -309,9 +371,9 @@ function Compose() {
             Camera unavailable — tap the shutter to use a sample frame.
           </p>
         ) : null}
-        {mode === "dual" && live && !dualLive && !done ? (
+        {mode === "dual" && dualVideo && live && !dualLive && !done ? (
           <p className="absolute inset-x-0 bottom-4 text-center text-xs text-background/80">
-            Only one camera on this device — the second frame is a sample.
+            Only one camera on this device — the second clip is unavailable.
           </p>
         ) : null}
       </div>
@@ -319,16 +381,26 @@ function Compose() {
       {!done ? (
         <div className="mt-6 flex items-center justify-center gap-8">
           <button
-            onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+            onClick={() =>
+              mode === "dual"
+                ? setDualMain((f) => other(f))
+                : setFacing((f) => (f === "user" ? "environment" : "user"))
+            }
             aria-label="Flip camera"
-            disabled={mode === "dual"}
+            disabled={dualPhoto && shots.length > 0}
             className="rounded-full p-3 text-muted-foreground hover:bg-muted disabled:opacity-30"
           >
             <RefreshCw className="size-5" />
           </button>
           <button
-            onClick={mode === "video" ? toggleRecording : capture}
-            aria-label={mode === "video" ? (recording ? "Stop recording" : "Record video") : "Take photo"}
+            onClick={mode === "video" || dualVideo ? toggleRecording : capture}
+            aria-label={
+              mode === "video" || dualVideo
+                ? recording
+                  ? "Stop recording"
+                  : "Record video"
+                : "Take photo"
+            }
             className="flex size-18 items-center justify-center rounded-full border-2 border-foreground p-1 transition-transform active:scale-95"
           >
             <span
@@ -337,7 +409,7 @@ function Compose() {
                 recording ? "bg-destructive" : "bg-foreground",
               )}
             >
-              {mode === "video" ? (
+              {mode === "video" || dualVideo ? (
                 recording ? (
                   <Square className="size-4" />
                 ) : (
@@ -349,10 +421,11 @@ function Compose() {
             </span>
           </button>
           <span className="w-11 text-center text-[11px] text-muted-foreground">
-            {doubleNow && mode === "photo" ? `${shots.length}/2` : ""}
+            {dualPhoto || (doubleNow && mode === "photo") ? `${shots.length}/2` : ""}
           </span>
         </div>
       ) : (
+
         <div className="mt-6 space-y-5">
           <input
             value={caption}
@@ -448,6 +521,8 @@ function Compose() {
               onClick={() => {
                 setShots([]);
                 setClip(undefined);
+                setClip2(undefined);
+
                 if (doubleNow) setFacing("environment");
               }}
               className="flex-1 rounded-full border px-4 py-3 text-sm"
