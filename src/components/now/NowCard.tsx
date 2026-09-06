@@ -22,6 +22,11 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
   const myGuesses = guessed[post.id] ?? [];
   const correct = post.guessPlace ? myGuesses.includes(post.guessPlace.answer) : false;
   const mine = post.mine ?? post.user === "You";
+  // Feed frames vary: some landscape, some square, some portrait.
+  const ratios = ["aspect-[4/3]", "aspect-square", "aspect-[3/4]"] as const;
+  const seed = [...post.id].reduce((n, c) => n + c.charCodeAt(0), 0);
+  const ratio = ratios[seed % ratios.length]!;
+
 
   async function remove() {
     if (post.dbId) {
