@@ -80,7 +80,7 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
             src={post.video}
             controls
             playsInline
-            className={cn("w-full bg-foreground object-cover", compact ? "aspect-square" : "aspect-[4/5]")}
+            className={cn("w-full bg-foreground object-cover", compact ? "aspect-square" : ratio)}
           />
         ) : (
           <img
@@ -88,10 +88,11 @@ export function NowCard({ post, compact = false }: { post: NowPost; compact?: bo
             alt={`${post.user}'s NOW`}
             loading="lazy"
             width={768}
-            height={1024}
-            className={cn("w-full object-cover", compact ? "aspect-square" : "aspect-[4/5]")}
+            height={768}
+            className={cn("w-full object-cover", compact ? "aspect-square" : ratio)}
           />
         )}
+
         {post.selfie ? (
           <img
             src={post.selfie}
