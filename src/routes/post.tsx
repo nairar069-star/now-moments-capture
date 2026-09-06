@@ -42,7 +42,10 @@ const formats: { key: FormatKey; label: string; value: number; aspect: string }[
 
 function Compose() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isPro } = useAuth();
+  const [format, setFormat] = useState<FormatKey>("portrait");
+  const galleryRef = useRef<HTMLInputElement>(null);
+
   const queryClient = useQueryClient();
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
