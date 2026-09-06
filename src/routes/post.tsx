@@ -521,6 +521,8 @@ function Compose() {
               onClick={() => {
                 setShots([]);
                 setClip(undefined);
+                setClip2(undefined);
+
                 if (doubleNow) setFacing("environment");
               }}
               className="flex-1 rounded-full border px-4 py-3 text-sm"
