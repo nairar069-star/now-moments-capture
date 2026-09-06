@@ -31,6 +31,15 @@ const visibilities: { key: Visibility; label: string }[] = [
 
 type Mode = "photo" | "video" | "dual";
 
+type FormatKey = "portrait" | "square" | "landscape";
+
+const formats: { key: FormatKey; label: string; value: number; aspect: string }[] = [
+  { key: "portrait", label: "Portrait", value: 4 / 5, aspect: "aspect-[4/5]" },
+  { key: "square", label: "Square", value: 1, aspect: "aspect-square" },
+  { key: "landscape", label: "Landscape", value: 4 / 3, aspect: "aspect-[4/3]" },
+];
+
+
 function Compose() {
   const navigate = useNavigate();
   const { user } = useAuth();
