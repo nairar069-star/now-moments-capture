@@ -474,10 +474,34 @@ function Compose() {
               )}
             </span>
           </button>
-          <span className="w-11 text-center text-[11px] text-muted-foreground">
-            {dualPhoto || (doubleNow && mode === "photo") ? `${shots.length}/2` : ""}
-          </span>
+          {mode === "photo" ? (
+            <div className="w-11 text-center">
+              <input
+                ref={galleryRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  pickFromGallery(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={() => (isPro ? galleryRef.current?.click() : void navigate({ to: "/pro" }))}
+                aria-label={isPro ? "Add photo from gallery" : "Gallery is a Pro feature"}
+                className="rounded-full p-3 text-muted-foreground hover:bg-muted"
+              >
+                <ImagePlus className="size-5" />
+              </button>
+              <span className="block text-[10px] text-muted-foreground">{isPro ? "Gallery" : "Pro"}</span>
+            </div>
+          ) : (
+            <span className="w-11 text-center text-[11px] text-muted-foreground">
+              {dualPhoto ? `${shots.length}/2` : ""}
+            </span>
+          )}
         </div>
+
       ) : (
 
         <div className="mt-6 space-y-5">
