@@ -26,7 +26,7 @@ export function AppShell({
   action?: ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { drop, notifications, nextDropIn, activeEvent } = useNow();
+  const { drop, notifications, nextDropIn, activeEvent, dropsLeft, dropsPerDay } = useNow();
   const { user, isPro } = useAuth();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -73,7 +73,7 @@ export function AppShell({
           <DropBanner />
         ) : (
           <p className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span className="tracking-[0.14em] uppercase">Next NOW drop</span>
+            <span className="tracking-[0.14em] uppercase">Next NOW drop · {dropsPerDay - dropsLeft + 1} of {dropsPerDay} today</span>
             <span className="wordmark tabular text-sm text-accent">
               {mounted ? formatCountdown(nextDropIn) : "--:--"}
             </span>
