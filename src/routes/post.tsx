@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, Eye, RefreshCw, Square, Users, Video, X } from "lucide-react";
+import { Camera, Eye, ImagePlus, RefreshCw, Square, Users, Video, X } from "lucide-react";
 import { formatCountdown, useNow } from "@/lib/now-store";
 import { photos, type Visibility } from "@/lib/nowData";
 import { cn } from "@/lib/utils";
@@ -372,7 +372,11 @@ function Compose() {
           muted
           // Never mirrored, on either camera.
           style={{ transform: "none" }}
-          className={cn("aspect-[4/5] w-full object-cover", done && "opacity-0")}
+          className={cn(
+            mode === "photo" ? formats.find((f) => f.key === format)!.aspect : "aspect-[4/5]",
+            "w-full object-cover",
+            done && "opacity-0",
+          )}
         />
         {mode === "dual" && dualVideo && !done ? (
           <video
