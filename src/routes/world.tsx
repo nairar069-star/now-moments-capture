@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MapPin, Plus } from "lucide-react";
 import { AppShell } from "@/components/now/AppShell";
 import { NowCard } from "@/components/now/NowCard";
-import { nearbyPlaces, worldNows } from "@/lib/nowData";
+import { placesNearMe } from "@/lib/geo.functions";
+import { worldNows } from "@/lib/nowData";
 import { useNow } from "@/lib/now-store";
 import { cn } from "@/lib/utils";
 
@@ -35,10 +36,18 @@ function World() {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // Coordinates are never posted — they only pick nearby place options.
-        setNearby(nearbyPlaces(pos.coords.latitude, pos.coords.longitude));
-        setLocating(false);
+      async (pos) => {
+        // Coordinates are only used to look up nearby place names — never posted.
+        try {
+          const places = await placesNearMe({
+            data: { lat: pos.coords.latitude, lon: pos.coords.longitude },
+          });
+          setNearby(places);
+        } catch {
+          setNearby([]);
+        } finally {
+          setLocating(false);
+        }
       },
       () => setLocating(false),
       { timeout: 8000 },
