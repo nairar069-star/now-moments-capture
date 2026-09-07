@@ -12,14 +12,14 @@ async function reverseAt(lat: number, lon: number, zoom: number): Promise<string
   const json = (await res.json()) as { address?: Record<string, string | undefined>; name?: string };
   const a = json.address ?? {};
   const name =
-    a.suburb ??
-    a.neighbourhood ??
-    a.village ??
-    a.town ??
-    a.city ??
-    a.municipality ??
-    a.county ??
-    a.state ??
+    a["suburb"] ??
+    a["neighbourhood"] ??
+    a["village"] ??
+    a["town"] ??
+    a["city"] ??
+    a["municipality"] ??
+    a["county"] ??
+    a["state"] ??
     json.name ??
     null;
   return name && name.trim() ? name.trim() : null;
