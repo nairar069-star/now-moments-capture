@@ -163,7 +163,7 @@ export function NowProvider({ children }: { children: ReactNode }) {
   const startDrop = useCallback(() => {
     setDoubleNow(Math.random() > 0.5);
     setDrop({ active: true, secondsLeft: DROP_SECONDS, missed: false });
-    notify({ kind: "drop", title: "NOW DROP", body: "You have 90 seconds." });
+    notify({ kind: "drop", title: "NOW DROP", body: "You have 90 seconds. Photo or video, your call." });
   }, [notify]);
 
   useEffect(() => {
