@@ -145,23 +145,29 @@ function Compose() {
 
 
   // Crop any source to the chosen frame format.
-  function cropTo(source: HTMLVideoElement | HTMLImageElement, sw: number, sh: number) {
+  function cropTo(source: HTMLVideoElement | HTMLImageElement, sw: number, sh: number, mirror = false) {
     const target = formats.find((f) => f.key === format)!.value;
     const canvas = document.createElement("canvas");
     const cropW = Math.min(sw, sh * target);
     const cropH = cropW / target;
     canvas.width = Math.round(cropW);
     canvas.height = Math.round(cropH);
-    canvas
-      .getContext("2d")
-      ?.drawImage(source, (sw - cropW) / 2, (sh - cropH) / 2, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      if (mirror) {
+        // Front camera: flip the captured frame so text and faces read naturally.
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(source, (sw - cropW) / 2, (sh - cropH) / 2, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    }
     return canvas.toDataURL("image/jpeg", 0.85);
   }
 
   function grab(el: HTMLVideoElement | null) {
     if (el && el.videoWidth) {
-      // No mirroring: the frame is drawn exactly as the sensor sees it.
-      return cropTo(el, el.videoWidth, el.videoHeight);
+      // Mirror only the front camera; the back camera is drawn as-is.
+      return cropTo(el, el.videoWidth, el.videoHeight, mainFacing === "user");
     }
     return photos[Math.floor(Math.random() * photos.length)]!;
   }
