@@ -376,8 +376,8 @@ function Compose() {
           ref={videoRef}
           playsInline
           muted
-          // Never mirrored, on either camera.
-          style={{ transform: "none" }}
+          // Front camera preview is mirrored like a mirror; back camera stays as-is.
+          style={{ transform: mainFacing === "user" ? "scaleX(-1)" : "none" }}
           className={cn(
             mode === "photo" ? formats.find((f) => f.key === format)!.aspect : "aspect-[4/5]",
             "w-full object-cover",
