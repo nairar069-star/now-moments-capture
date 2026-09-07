@@ -389,7 +389,7 @@ function Compose() {
             ref={frontRef}
             playsInline
             muted
-            style={{ transform: "none" }}
+            style={{ transform: other(dualMain) === "user" ? "scaleX(-1)" : "none" }}
             className="absolute top-3 left-3 h-32 w-24 rounded-lg border-2 border-background/80 bg-foreground object-cover"
           />
         ) : null}
