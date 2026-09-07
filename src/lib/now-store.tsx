@@ -48,6 +48,8 @@ type Store = {
   drop: DropState;
   startDrop: () => void;
   nextDropIn: number;
+  dropsLeft: number;
+  dropsPerDay: number;
   doubleNow: boolean;
   postNow: (input: PostInput) => void;
   deletePost: (id: string) => void;
@@ -99,6 +101,14 @@ type Store = {
 const NowContext = createContext<Store | null>(null);
 
 const DROP_SECONDS = 90;
+const DROPS_PER_DAY = 3;
+
+function secondsUntilMidnight() {
+  const d = new Date();
+  const m = new Date(d);
+  m.setHours(24, 0, 0, 0);
+  return Math.max(1, Math.floor((m.getTime() - d.getTime()) / 1000));
+}
 
 export function NowProvider({ children }: { children: ReactNode }) {
   const [feed, setFeed] = useState<NowPost[]>(friendsNows);
@@ -115,6 +125,8 @@ export function NowProvider({ children }: { children: ReactNode }) {
   const [activeEvent, setActiveEvent] = useState<ActiveEvent>(null);
   const [friends, setFriends] = useState<Friend[]>(seedFriends);
   const [nextDropIn, setNextDropIn] = useState(90);
+  const [dropsLeft, setDropsLeft] = useState(DROPS_PER_DAY);
+  const dropsLeftRef = useRef(DROPS_PER_DAY);
   const [quests, setQuests] = useState<Quest[]>(seedQuests);
   const [joinedQuests, setJoinedQuests] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NowNotification[]>(seedNotifications);
@@ -167,26 +179,38 @@ export function NowProvider({ children }: { children: ReactNode }) {
     };
   }, [drop.active]);
 
-  // Daily NOW DROP scheduler: a visible countdown to the next unpredictable drop.
+  // Daily NOW DROP scheduler: exactly 3 unpredictable drops per day,
+  // spread across the remaining hours, resetting at midnight.
   useEffect(() => {
+    setNextDropIn(Math.max(60, Math.floor(secondsUntilMidnight() / DROPS_PER_DAY)));
     const t = setInterval(() => {
       setNextDropIn((n) => {
         if (n > 1) return n - 1;
+        if (dropsLeftRef.current <= 0) {
+          // Past midnight: a fresh day, quota back to 3.
+          dropsLeftRef.current = DROPS_PER_DAY;
+          setDropsLeft(DROPS_PER_DAY);
+          return Math.max(60, Math.floor(secondsUntilMidnight() / DROPS_PER_DAY));
+        }
+        dropsLeftRef.current -= 1;
+        setDropsLeft(dropsLeftRef.current);
         setDoubleNow(Math.random() > 0.5);
         setDrop({ active: true, secondsLeft: DROP_SECONDS, missed: false });
         setNotifications((list) => [
-          { id: `${Date.now()}`, kind: "drop", title: "NOW DROP", body: "You have 90 seconds.", ago: "now", accent: true },
+          { id: `${Date.now()}`, kind: "drop", title: "NOW DROP", body: "You have 90 seconds. Photo or video, your call.", ago: "now", accent: true },
           ...list,
         ]);
         if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
           try {
-            new Notification("NOW DROP", { body: "You have 90 seconds." });
+            new Notification("NOW DROP", { body: "You have 90 seconds. Photo or video, your call." });
           } catch {
             /* ignore */
           }
         }
-        // Next drop later today, at an unpredictable moment.
-        return 300 + Math.floor(Math.random() * 600);
+        const remaining = dropsLeftRef.current;
+        return remaining > 0
+          ? Math.max(120, Math.floor(secondsUntilMidnight() / remaining))
+          : secondsUntilMidnight() + 3600;
       });
     }, 1000);
     return () => clearInterval(t);
@@ -385,6 +409,8 @@ export function NowProvider({ children }: { children: ReactNode }) {
       drop,
       startDrop,
       nextDropIn,
+      dropsLeft,
+      dropsPerDay: DROPS_PER_DAY,
       doubleNow,
       postNow,
       deletePost,
@@ -427,6 +453,7 @@ export function NowProvider({ children }: { children: ReactNode }) {
       drop,
       startDrop,
       nextDropIn,
+      dropsLeft,
       doubleNow,
       postNow,
       deletePost,
